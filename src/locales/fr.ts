@@ -211,7 +211,6 @@ export const fr = {
   "Sharing": "Partage",
   "Short animated guides now show how each feature works, from adding places to finding crossings.": "De courts guides animés montrent chaque fonction, de l’ajout de lieux à la recherche de croisements.",
   "Short animated guides for each feature.": "De courts guides animés pour chaque fonction.",
-  "Still stuck?": "Toujours bloqué ?",
   "Report a problem": "Signaler un problème",
   "Opens GitHub, with a free account": "Ouvre GitHub, avec un compte gratuit",
   "Learn how it works": "Apprendre à s’en servir",

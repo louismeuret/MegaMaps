@@ -1118,6 +1118,10 @@ dialog.tour > * {
 .tour > .dialog-note {
   margin-top: var(--space-12);
 }
+/* Clear of the screen's bottom edge when no button sits under the list. */
+.tour-list {
+  padding-bottom: max(var(--space-20), env(safe-area-inset-bottom));
+}
 .tour-list > .share-summary:first-child {
   margin-top: var(--space-20);
 }
@@ -1126,6 +1130,10 @@ dialog.tour > * {
 }
 .tour-list .share-summary {
   margin-top: var(--space-8);
+}
+/* Report a problem stands apart from Getting started under it. */
+.tour-list > .share-summary + .share-summary {
+  margin-top: var(--space-24);
 }
 .tour-list .share-row > svg:last-child {
   color: var(--muted);
