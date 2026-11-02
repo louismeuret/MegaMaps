@@ -226,10 +226,8 @@ export class Viewer {
     return { width: this.width, height: Math.max(1, this.height - this.covered) };
   }
   private limits(rotation = this.camera.rotation ?? 0) {
-    return {
-      min: fitCamera(this.map, this.viewport(), rotation).scale,
-      max: Math.max(4, fitCamera(this.map, this.viewport(), rotation).scale),
-    };
+    const min = fitCamera(this.map, this.viewport(), rotation).scale;
+    return { min, max: Math.max(4, min) };
   }
   private resize() {
     const viewportWidth = Math.max(1, this.canvas.clientWidth),

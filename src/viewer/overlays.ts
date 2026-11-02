@@ -443,8 +443,11 @@ export class NavigationOverlay {
       const selected = !!markerId && markerId === this.selected;
       // A route can start on a place: a label may cover, or connect outside, all
       // the symbols on its point.
-      const own = selected ? this.anchors : [...this.anchors, ...balloons].filter(anchor =>
-        p.x >= anchor.left && p.x <= anchor.right && p.y >= anchor.top && p.y <= anchor.bottom);
+      const own = selected ? this.anchors : [];
+      if (!selected)
+        for (const list of [this.anchors, balloons])
+          for (const anchor of list)
+            if (p.x >= anchor.left && p.x <= anchor.right && p.y >= anchor.top && p.y <= anchor.bottom) own.push(anchor);
       // The selected, moving or edited item keeps its label when zoomed out.
       const lift = selected ? "selected" : priority > 0 ? "raised" : "";
       if (callout.draw(p, viewport, labels, wanted(priority), lift, own)) gliding = true;
