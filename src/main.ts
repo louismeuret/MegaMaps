@@ -567,19 +567,26 @@ async function refresh() {
     );
     grid.append(card);
     const showThumbnail = async (url: string) => {
-      const inverted = await navigation.then((state) => state.inverted, () => false);
-      const filter = inverted ? await darkFilter(map.id, url) : "";
-      if (version !== renderVersion) return;
-      shownFilters.set(map.id, filter);
       const img = new Image();
-      img.style.filter = filter;
       img.src = url;
       img.alt = "";
       img.loading = "lazy";
       // A dragged thumbnail would carry its image as a file, and dropped back
       // on the library it would import as a new map.
       img.draggable = false;
-      card.querySelector(".thumbnail")!.prepend(img);
+      // A preview shown before keeps its look at once, so coming home doesn't
+      // flash placeholders while the map's settings are read again.
+      const known = shownFilters.get(map.id);
+      if (known !== undefined) {
+        img.style.filter = known;
+        card.querySelector(".thumbnail")!.prepend(img);
+      }
+      const inverted = await navigation.then((state) => state.inverted, () => false);
+      const filter = inverted ? await darkFilter(map.id, url) : "";
+      if (version !== renderVersion) return;
+      shownFilters.set(map.id, filter);
+      img.style.filter = filter;
+      if (!img.isConnected) card.querySelector(".thumbnail")!.prepend(img);
     };
     const cached = thumbnails.get(map.id);
     if (cached) {
