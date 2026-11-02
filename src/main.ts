@@ -796,7 +796,7 @@ async function erase() {
   }
 }
 // Reset's Reset the app, once its three steps are confirmed: all data, then every setting.
-// The app starts again, since the language and label size are read at launch.
+// The app starts again as if just installed, with Getting started and the example map.
 async function reset() {
   if (importing || ocrJob || updates.busy)
     return showMessage(t("Finish the current task first"), t("Mega Maps is busy with a map. Let it finish, then try again."));
