@@ -8,7 +8,7 @@ import { loadOcr, saveOcr } from "../src/storage/ocr";
 import { deleteAllData, deleteStoredMap, payloadStore } from "../src/storage/payloads";
 import { loadPhoto, savePhoto } from "../src/storage/photos";
 import { loadSetting, saveSetting } from "../src/storage/settings";
-import { resetPreferences, setPreference } from "../src/preferences";
+import { preference, resetPreferences, setPreference } from "../src/preferences";
 import { defaultNavigation } from "../src/viewer/navigation";
 import type { MapRecord } from "../src/types";
 
@@ -134,14 +134,14 @@ test("deleting everything removes every map with its data and the saved settings
   assert.equal(await loadSetting("last-backup"), undefined);
 });
 
-test("resetting the settings keeps what marks the device as already set up", () => {
+test("resetting the settings makes the app new again but keeps the same device", () => {
   setPreference("label-size", "large");
   setPreference("tour", "seen");
   localStorage.setItem("megamaps:stats-id", "device");
   localStorage.setItem("megamaps:changelog-seen", "abc1234");
   resetPreferences();
   assert.equal(localStorage.getItem("megamaps:label-size"), null);
-  assert.equal(localStorage.getItem("megamaps:tour"), "seen", "Getting started doesn't play again");
+  assert.equal(preference("tour"), "new", "Getting started and the example map come back");
   assert.equal(localStorage.getItem("megamaps:stats-id"), "device", "stats keep counting the same device");
   assert.equal(localStorage.getItem("megamaps:changelog-seen"), "abc1234");
 });

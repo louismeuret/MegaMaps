@@ -39,9 +39,9 @@ export function preference<K extends keyof Preferences>(key: K): Preferences[K] 
   return (value !== null && allowed.includes(value) ? value : allowed[0]) as Preferences[K];
 }
 
-/** Reset the app: every setting back to its default. Getting started stays seen, so the app isn't new again. */
+/** Reset the app: every setting back to its default, so Getting started and the example map come back as on a new install. */
 export function resetPreferences() {
-  for (const key of Object.keys(choices)) if (key !== "tour") localStorage.removeItem(`megamaps:${key}`);
+  for (const key of Object.keys(choices)) localStorage.removeItem(`megamaps:${key}`);
 }
 
 export function setPreference<K extends keyof Preferences>(key: K, value: Preferences[K]) {
