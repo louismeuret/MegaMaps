@@ -26,12 +26,12 @@ import { initMapRename, mapRenameMarkup } from "./ui/map-rename";
 import { showActionSheet } from "./ui/action-sheet";
 import { initSharing, sharingMarkup } from "./ui/sharing";
 import { initUpdateDialog, updateDialogMarkup } from "./ui/update-dialog";
-import { eraseDialogMarkup, initSettingsPage, restoreDialogMarkup, settingsMarkup } from "./ui/settings-page";
+import { eraseDialogMarkup, initSettingsPage, resetMarkup, restoreDialogMarkup, settingsMarkup } from "./ui/settings-page";
 import { backupDue, isBackupFile, restoreBackup, type Backup } from "./storage/backup";
 import { loadSetting } from "./storage/settings";
 import { protectStorage, storageProtected } from "./storage/protection";
 import { language, locale, t } from "./i18n";
-import { preference } from "./preferences";
+import { preference, resetPreferences } from "./preferences";
 import { importAnnotations, importNewCopy } from "./sharing/storage";
 import { isShareFile } from "./sharing/format";
 import { initInstallPage, installMarkup, isInstalled } from "./ui/install-page";
@@ -45,6 +45,7 @@ const app = document.querySelector<HTMLDivElement>("#app")!;
 app.innerHTML = `
   ${homeMarkup(import.meta.env.MODE === "production" ? "" : ' <span class="dev-title">Dev</span>')}
   ${settingsMarkup}
+  ${resetMarkup}
   ${installMarkup}
   <section id="viewer" class="viewer" aria-label="${t("Map viewer")}" hidden>${viewerMarkup}</section>
   <input type="file" id="file-input" hidden>
@@ -96,6 +97,7 @@ if (released) {
 }
 const canUpdate = import.meta.env.PROD && "serviceWorker" in navigator;
 const settings = initSettingsPage(settingsPage, {
+  reset: element("reset"),
   restore: element<HTMLDialogElement>("restore-dialog"),
   erase: element<HTMLDialogElement>("erase-dialog"),
 }, {
@@ -104,7 +106,7 @@ const settings = initSettingsPage(settingsPage, {
   checkUpdates: openUpdates,
   openWhatsNew: () => whatsNew.openAll(),
   restore: (backup) => void restore(backup),
-  erase: () => void erase(),
+  erase: (what) => void (what === "app" ? reset() : erase()),
   setLabelSize: (size) => { document.documentElement.dataset.labels = size; },
 });
 // Versions installed automatically this session, so a failed one waits for a tap instead of retrying.
@@ -778,7 +780,7 @@ async function restore(backup: Backup) {
     else location.reload();
   }
 }
-// Settings' Delete everything, once its three steps are confirmed.
+// Reset's Delete all data, once its three steps are confirmed.
 async function erase() {
   if (importing || ocrJob || updates.busy)
     return showMessage(t("Finish the current task first"), t("Mega Maps is busy with a map. Let it finish, then try again."));
@@ -789,6 +791,22 @@ async function erase() {
     showMessage(t("Couldn’t delete everything"), error instanceof Error ? error.message : String(error));
   } finally {
     channel?.postMessage("changed");
+    await refresh().catch(() => {});
+    void settings.refresh();
+  }
+}
+// Reset's Reset the app, once its three steps are confirmed: all data, then every setting.
+// The app starts again, since the language and label size are read at launch.
+async function reset() {
+  if (importing || ocrJob || updates.busy)
+    return showMessage(t("Finish the current task first"), t("Mega Maps is busy with a map. Let it finish, then try again."));
+  try {
+    await mutate(deleteAllData);
+    resetPreferences();
+    channel?.postMessage("changed");
+    location.reload();
+  } catch (error) {
+    showMessage(t("Couldn’t reset the app"), error instanceof Error ? error.message : String(error));
     await refresh().catch(() => {});
     void settings.refresh();
   }
