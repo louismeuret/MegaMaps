@@ -527,7 +527,7 @@ small {
   font-weight: 400;
   font-variant-numeric: tabular-nums;
 }
-/* A plane marks the offline line, in its color. */
+/* A plane marks the offline line: lime when ready, red when files are missing. */
 .footer-offline {
   display: inline-flex;
   align-items: center;
@@ -545,6 +545,10 @@ small {
 }
 .footer-offline:has([data-state="unavailable"]) {
   color: var(--danger);
+}
+/* Ready offline turns the plane lime; the text stays quiet. */
+.footer-offline:has([data-state="available"]) svg {
+  color: var(--neon-add);
 }
 .footer-updated {
   padding: 0;
