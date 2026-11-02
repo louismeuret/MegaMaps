@@ -401,6 +401,13 @@ export class Viewer {
     this.applyAppearance();
     this.invalidate();
   }
+  /** The look or the layers shown changed, not what is on the map: nothing
+   * is rebuilt, so a toggle stays quick on a map with many places. */
+  restyle() {
+    this.overlay?.setLayers(this.navigation.layers);
+    this.applyAppearance();
+    this.invalidate();
+  }
   private applyAppearance() {
     this.dark = darkMode(this.tone);
     const look = this.navigation.inverted ? this.dark.look : undefined;

@@ -121,7 +121,7 @@ export class ViewerControls {
     Viewer,
     "setTool" | "updateNavigation" | "jumpTo" | "fitPoints"
   > &
-    Partial<Pick<Viewer, "setMeasure" | "orient" | "straighten" | "setSearch" | "refreshLabels" | "previewPlace" | "pulse" | "reveal" | "showing" | "cover" | "select" | "showTrip" | "showView">>;
+    Partial<Pick<Viewer, "setMeasure" | "restyle" | "orient" | "straighten" | "setSearch" | "refreshLabels" | "previewPlace" | "pulse" | "reveal" | "showing" | "cover" | "select" | "showTrip" | "showView">>;
   private ocr?: OcrIndex;
   private ocrMessage = "";
   private searchMatches: MapSearchMatch[] = [];
@@ -358,9 +358,11 @@ export class ViewerControls {
     this.renderSearch();
     this.render();
   }
-  private changed() {
+  /** Saves an edit and shows it; `restyled` when only the look or the layers changed. */
+  private changed(restyled = false) {
     this.persistence.changed();
-    this.viewer?.updateNavigation(this.state);
+    if (restyled && this.viewer?.restyle) this.viewer.restyle();
+    else this.viewer?.updateNavigation(this.state);
     if (this.openSheet === "search" && !this.searchTimer) this.renderSearch();
     this.render();
   }
@@ -1342,12 +1344,12 @@ export class ViewerControls {
     this.click("sheet-dismiss", () => this.sheet(undefined));
     this.on(this.input("dark-map"), "change", () => {
       this.state.inverted = this.input("dark-map").checked;
-      this.changed();
+      this.changed(true);
     });
     for (const layer of layerNames)
       this.on(this.input(`layer-${layer}`), "change", () => {
         this.state.layers[layer] = this.input(`layer-${layer}`).checked;
-        this.changed();
+        this.changed(true);
       });
     this.click("spotlight", () => this.spotlight());
     for (const mode of manualModes) {
@@ -1391,7 +1393,7 @@ export class ViewerControls {
       this.on(input, "change", () => {
         if (!input.checked) return;
         this.state.dimming = level;
-        this.changed();
+        this.changed(true);
       });
     }
     // Reading a place, a press anywhere off the card and the map closes it; the

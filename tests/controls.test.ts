@@ -2176,3 +2176,42 @@ test("a map reopened in Compass mode asks for the compass again on the first tap
     await controls.dispose();
   }
 });
+
+test("dark map, brightness and layers restyle the map without rebuilding its places", async () => {
+  const { window, document } = parseHTML(
+    `<html><body><section id="viewer">${viewerMarkup}</section></body></html>`,
+  );
+  Object.defineProperty(globalThis, "document", { value: document, configurable: true });
+  Object.defineProperty(globalThis, "window", { value: window, configurable: true });
+  for (const dialog of document.querySelectorAll("dialog"))
+    Object.defineProperty(dialog, "close", { value: () => dialog.removeAttribute("open") });
+  const map: MapRecord = {
+    id: "restyle", name: "quarry.png", width: 1000, height: 1000,
+    bytes: 1, backend: "indexeddb", created: 0, status: "ready", levels: [],
+  };
+  const state = defaultNavigation(map.id);
+  let rebuilds = 0, restyles = 0;
+  const controls = new ViewerControls(document.querySelector<HTMLElement>("#viewer")!, map, state);
+  controls.attach({
+    setTool() {}, fitPoints() {}, jumpTo() {},
+    updateNavigation() { rebuilds++; },
+    restyle() { restyles++; },
+  });
+  const toggle = (id: string) => {
+    const input = document.getElementById(id) as HTMLInputElement;
+    input.checked = !input.checked;
+    input.dispatchEvent(new window.Event("change"));
+  };
+  try {
+    toggle("dark-map");
+    toggle("brightness-75");
+    toggle("layer-labels");
+    assert.equal(restyles, 3);
+    assert.equal(rebuilds, 0);
+    assert.equal(state.inverted, !defaultNavigation(map.id).inverted);
+    assert.equal(state.dimming, 0.75);
+    assert.equal(state.layers.labels, false);
+  } finally {
+    await controls.dispose();
+  }
+});
