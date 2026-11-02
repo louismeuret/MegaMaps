@@ -9,16 +9,41 @@ export interface PayloadStore {
   get(mapId: string, key: string): Promise<Blob>;
   deleteMap(mapId: string): Promise<void>;
 }
-async function directory(id?: string) {
+async function mapsFolder(create: boolean) {
   const root = await navigator.storage.getDirectory();
-  const maps = await root.getDirectoryHandle("maps", { create: true });
-  return id ? maps.getDirectoryHandle(id, { create: true }) : maps;
+  return root.getDirectoryHandle("maps", { create });
+}
+/** Each map's folder, looked up once rather than for every tile. Another
+ * context (a worker, a tab) may remove one, so a lookup that fails is redone. */
+const folders = new Map<string, Promise<FileSystemDirectoryHandle>>();
+function folder(id: string, create: boolean) {
+  let found = folders.get(id);
+  if (!found) {
+    found = mapsFolder(create).then((maps) => maps.getDirectoryHandle(id, { create }));
+    folders.set(id, found);
+    const settled = found;
+    settled.catch(() => {
+      if (folders.get(id) === settled) folders.delete(id);
+    });
+  }
+  return found;
+}
+const missing = (error: unknown) =>
+  error instanceof DOMException && error.name === "NotFoundError";
+/** Runs with the map's folder, again with a fresh one if the kept one went missing. */
+async function inFolder<T>(id: string, create: boolean, run: (dir: FileSystemDirectoryHandle) => Promise<T>) {
+  const kept = folders.get(id);
+  try {
+    return await run(await folder(id, create));
+  } catch (error) {
+    if (!kept || !missing(error)) throw error;
+    if (folders.get(id) === kept) folders.delete(id);
+    return run(await folder(id, create));
+  }
 }
 class OPFSStore implements PayloadStore {
   async put(id: string, key: string, blob: Blob) {
-    const file = await (
-      await directory(id)
-    ).getFileHandle(key, { create: true });
+    const file = await inFolder(id, true, (dir) => dir.getFileHandle(key, { create: true }));
     const writer = await file.createWritable();
     try {
       await writer.write(blob);
@@ -29,18 +54,14 @@ class OPFSStore implements PayloadStore {
     }
   }
   async get(id: string, key: string) {
-    const root = await navigator.storage.getDirectory();
-    const maps = await root.getDirectoryHandle("maps");
-    return (
-      await (await maps.getDirectoryHandle(id)).getFileHandle(key)
-    ).getFile();
+    return inFolder(id, false, async (dir) => (await dir.getFileHandle(key)).getFile());
   }
   async deleteMap(id: string) {
+    folders.delete(id);
     try {
-      await (await directory()).removeEntry(id, { recursive: true });
+      await (await mapsFolder(true)).removeEntry(id, { recursive: true });
     } catch (error) {
-      if (!(error instanceof DOMException && error.name === "NotFoundError"))
-        throw error;
+      if (!missing(error)) throw error;
     }
   }
 }
