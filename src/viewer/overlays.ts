@@ -24,9 +24,18 @@ export const CASING = PIN_CASING;
 
 // Pin containers retain their animation and position while sharing library icons.
 // The anchor is the icon's point that sits on the map point: its centre, or a teardrop's tip.
+// Each distinct icon is parsed once; a rebuild copies it for every pin, which is quicker.
+const templates = new Map<string, SVGSVGElement>();
 const pinIcon = (body: SVGGElement, markup: string, size: number, anchor = { x: size / 2, y: size / 2 }) => {
-  body.innerHTML = markup;
-  const icon = body.querySelector("svg")!;
+  let template = templates.get(markup);
+  if (!template) {
+    const holder = node("g");
+    holder.innerHTML = markup;
+    template = holder.querySelector("svg")!;
+    templates.set(markup, template);
+  }
+  const icon = template.cloneNode(true) as SVGSVGElement;
+  body.replaceChildren(icon);
   icon.setAttribute("x", String(-anchor.x));
   icon.setAttribute("y", String(-anchor.y));
   icon.setAttribute("width", String(size));
