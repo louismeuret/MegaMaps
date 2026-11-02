@@ -1,6 +1,7 @@
 import { t } from "../i18n";
 import { OCR_VERSION, type OcrIndex } from "../ocr/index";
 import { importMap } from "../processing/import";
+import { markExample } from "../storage/database";
 import { saveNavigation } from "../storage/navigation";
 import { saveOcr } from "../storage/ocr";
 import type { ImportProgress } from "../types";
@@ -84,5 +85,6 @@ export async function addExampleMap(signal: AbortSignal, onProgress: (progress: 
   const map = await importMap(new File([image], `${t("Val Moulin (example)")}.jpg`, { type: "image/jpeg" }), onProgress, signal);
   await saveNavigation(exampleNavigation(map.id));
   await saveOcr(exampleOcr(map.id));
-  return map;
+  await markExample(map.id);
+  return { ...map, example: true as const };
 }

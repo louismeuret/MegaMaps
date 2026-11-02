@@ -429,6 +429,33 @@ small {
   cursor: pointer;
   transition: border-color 0.2s, background-color 0.2s;
 }
+/* Once there's a map of one's own, the example offers to go. */
+.example-done {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-8);
+  margin-top: var(--space-12);
+  padding: var(--space-12);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+}
+.example-done[hidden] {
+  display: none;
+}
+.example-done p {
+  flex: 1 1 100%;
+  margin: 0;
+  font-size: var(--font-size-small);
+  color: var(--muted);
+}
+.example-done button {
+  flex: 1;
+}
+/* Below the example map, still inviting an import of one's own. */
+.map-list:not(:empty) + .empty {
+  margin-top: var(--space-12);
+}
 .empty:hover,
 .dropping .empty {
   border-color: color-mix(in srgb, var(--neon-saved) 50%, transparent);
@@ -825,6 +852,26 @@ small {
   margin: 0;
   line-height: 1.5;
   color: var(--muted);
+}
+/* What it does, before asking to install it. */
+.landing-points {
+  display: grid;
+  gap: var(--space-8);
+  margin: var(--space-8) 0 0;
+  padding: 0;
+  list-style: none;
+  text-align: left;
+}
+.landing-points li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+}
+.landing-points svg {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  color: var(--neon-saved);
 }
 .landing .install-open {
   width: min(100%, var(--surface-max-width));

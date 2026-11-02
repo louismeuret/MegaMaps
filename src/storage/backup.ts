@@ -61,11 +61,12 @@ export function backupSummary(manifest: BackupManifest) {
 }
 
 /** A month after the last backup (or none), once a map was added or opened since;
- * a week when the browser may clear the library to free space. */
+ * a week when the browser may clear the library to free space. The example map
+ * holds nothing to lose, so the first map of one's own is what asks for one. */
 export const BACKUP_INTERVAL = 30 * 86_400_000;
 export const UNPROTECTED_BACKUP_INTERVAL = 7 * 86_400_000;
-export function backupDue(maps: { created: number; opened?: number }[], lastBackup = 0, now = Date.now(), kept = true) {
-  return maps.some((map) => (map.opened ?? map.created) > lastBackup)
+export function backupDue(maps: { created: number; opened?: number; example?: true }[], lastBackup = 0, now = Date.now(), kept = true) {
+  return maps.some((map) => !map.example && (map.opened ?? map.created) > lastBackup)
     && now - lastBackup >= (kept ? BACKUP_INTERVAL : UNPROTECTED_BACKUP_INTERVAL);
 }
 

@@ -51,7 +51,7 @@ const wheelLabels: Record<WheelChoice, string> = {
   trail: t("Mark where you are"),
 };
 
-// Getting started: only the basics, then the list of tutorials.
+// Getting started: only the basics, ending on the example map to try them.
 const basics: Guide[] = [
   {
     id: "welcome", title: t("Your maps, even underground"), icon: icons.map, color: "var(--neon-saved)",
@@ -59,15 +59,6 @@ const basics: Guide[] = [
     steps: [
       { from: "library map-card", tap: "open-map" },
       { touch: { move: "drag", at: on(329, 514), to: on(329, 454) }, show: "panned" },
-    ],
-  },
-  {
-    id: "import", title: t("Import a map"), icon: icons.download, color: "var(--neon-add)",
-    text: t("Tap Import and pick a photo or scan of the plan. Mega Maps prepares it once, then it opens in a blink."),
-    steps: [
-      { from: "library", tap: "import", show: "library import" },
-      { tap: "new-map", show: "library progress" },
-      { show: "library map-card" },
     ],
   },
   {
@@ -80,11 +71,12 @@ const basics: Guide[] = [
     ],
   },
   {
-    id: "panel-help", title: t("Help in every panel"), icon: icons.tutorials, color: "var(--neon-view)",
-    text: t("Each panel has a tutorial button at the top. Tap it to see how that panel works."),
+    id: "import", title: t("Import a map"), icon: icons.download, color: "var(--neon-add)",
+    text: t("Tap Import and pick a photo or scan of the plan. Mega Maps prepares it once, then it opens in a blink."),
     steps: [
-      { from: "", tap: "view", show: "view" },
-      { tap: "tutorial", show: "view" },
+      { from: "library", tap: "import", show: "library import" },
+      { tap: "new-map", show: "library progress" },
+      { show: "library map-card" },
     ],
   },
 ];
@@ -220,7 +212,7 @@ export const tutorialsMarkup = `<dialog id="tour" class="tour" aria-labelledby="
 <div class="tour-phone" id="tour-phone" aria-hidden="true">${tourScreenMarkup}</div>
 <h2 id="tour-title"></h2><p id="tour-text"></p>
 <ol class="share-summary tour-steps" id="tour-steps"></ol><p class="dialog-note" id="tour-note"></p>
-<div id="tour-list" class="tour-list"><div class="share-summary"><button type="button" class="share-row" id="tour-help"><span class="share-row-icon" style="--k:var(--neon-view)">${icons.help}</span><span class="share-row-label">${t("Help & ideas")}<small>${t("Questions, ideas and problems")}</small></span>${icons.arrow}</button></div><div class="share-summary"><button type="button" class="share-row" data-guide="basics"><span class="share-row-icon" style="--k:var(--neon-add)">${icons.sparkle}</span><span class="share-row-label">${t("Getting started")}<small>${t("The basics in four steps")}</small></span>${icons.arrow}</button></div>
+<div id="tour-list" class="tour-list"><div class="share-summary"><button type="button" class="share-row" id="tour-help"><span class="share-row-icon" style="--k:var(--neon-view)">${icons.help}</span><span class="share-row-label">${t("Help & ideas")}<small>${t("Questions, ideas and problems")}</small></span>${icons.arrow}</button></div><div class="share-summary"><button type="button" class="share-row" data-guide="basics"><span class="share-row-icon" style="--k:var(--neon-add)">${icons.sparkle}</span><span class="share-row-label">${t("Getting started")}<small>${t("The basics in three steps")}</small></span>${icons.arrow}</button></div>
 ${groups.map(([title, guides]) => `<h3 class="settings-heading">${title}</h3><div class="share-summary">${guides.map((guide) =>
   `<button type="button" class="share-row" data-guide="${guide.id}"><span class="share-row-icon" style="--k:${guide.color}">${guide.icon}</span><span class="share-row-label">${guide.title}</span>${icons.arrow}</button>`).join("")}</div>`).join("")}</div>
 <button type="button" class="primary" id="tour-next"></button>
@@ -281,8 +273,11 @@ const stepTime = ({ touch }: Step) =>
 
 type View = { kind: "basics"; page: number } | { kind: "list" } | { kind: "guide"; guide: Guide };
 
+/** The example map, when there is one: Getting started ends by opening it. */
+type Example = { ready: () => boolean; open: () => void };
+
 /** The full-page tour: Getting started, the tutorial list and each tutorial. */
-export function initTutorials(tour: HTMLDialogElement, offer: HTMLDialogElement) {
+export function initTutorials(tour: HTMLDialogElement, offer: HTMLDialogElement, example?: Example) {
   const part = <T extends HTMLElement = HTMLElement>(id: string) => tour.querySelector<T>(`#${id}`)!;
   const screenBox = part("tour-screen");
   const stepList = part("tour-steps");
@@ -293,8 +288,6 @@ export function initTutorials(tour: HTMLDialogElement, offer: HTMLDialogElement)
   let view: View = { kind: "list" };
   let steps: Step[] = [];
   let timers: ReturnType<typeof setTimeout>[] = [];
-  // Getting started reached its list: its last button then starts the app.
-  let finished = false;
 
   const later = (ms: number, run: () => void) => timers.push(setTimeout(run, ms));
   const stop = () => {
@@ -383,10 +376,12 @@ export function initTutorials(tour: HTMLDialogElement, offer: HTMLDialogElement)
     stepList.hidden = to.kind !== "guide";
     part("tour-note").textContent = to.kind === "guide" ? to.guide.note ?? "" : "";
     part("tour-note").hidden = !part("tour-note").textContent;
-    // A tutorial plays on its own: nothing leads on to the next one.
-    next.hidden = to.kind === "list" ? !finished : to.kind === "guide";
-    next.innerHTML = to.kind === "basics"
-      ? `<span>${to.page < basics.length - 1 ? t("Next") : t("See the tutorials")}</span>${icons.next}`
+    // Only Getting started leads on; its last page goes straight to the
+    // example map, to try what it showed. A tutorial plays on its own.
+    next.hidden = to.kind !== "basics";
+    next.innerHTML = to.kind !== "basics" ? ""
+      : to.page < basics.length - 1 ? `<span>${t("Next")}</span>${icons.next}`
+      : example?.ready() ? `${icons.map}<span>${t("Try the example map")}</span>`
       : `${icons.check}<span>${t("Start using Mega Maps")}</span>`;
     steps = guide?.steps ?? [];
     if (guide) showStep(0);
@@ -395,19 +390,16 @@ export function initTutorials(tour: HTMLDialogElement, offer: HTMLDialogElement)
   };
 
   const open = (to: View) => {
-    finished = false;
     render(to);
     if (!tour.open) showDialog(tour);
   };
 
   next.addEventListener("click", () => {
     if (view.kind === "basics" && view.page < basics.length - 1) return render({ kind: "basics", page: view.page + 1 });
-    if (view.kind === "basics") {
-      finished = true;
-      track("tour_finished");
-      return render({ kind: "list" });
-    }
+    const trying = example?.ready() ?? false;
+    track("tour_finished", { example: trying });
     tour.close();
+    if (trying) example!.open();
   });
   part("tour-list").addEventListener("click", (event) => {
     const id = (event.target as Element).closest<HTMLElement>("[data-guide]")?.dataset.guide;
