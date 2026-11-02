@@ -488,7 +488,7 @@ small {
   margin: 0;
 }
 /* Always shown just above the footer pill, however long the list. */
-.tutorials-open {
+.learn-open {
   align-self: center;
   display: inline-flex;
   align-items: center;
@@ -499,12 +499,12 @@ small {
   font-size: var(--font-size-small);
   color: var(--muted);
 }
-.tutorials-open svg {
+.learn-open svg {
   width: 16px;
   height: 16px;
   color: var(--neon-saved);
 }
-.tutorials-open strong {
+.learn-open strong {
   font-weight: 600;
   color: var(--neon-saved);
 }
@@ -1092,106 +1092,6 @@ small {
   }
 }
 
-/* ---------- Tutorials ---------- */
-/* Getting started and the tutorials fill the page: a phone acting the feature
-   out with the app's own controls, then what to do. */
-dialog.tour {
-  --accent: var(--neon-saved);
-  --tour-side: max(var(--space-20), (100vw - var(--surface-max-width)) / 2);
-  inset: 0;
-  width: 100%;
-  max-width: none;
-  height: 100dvh;
-  max-height: none;
-  margin: 0;
-  padding: max(var(--space-12), env(safe-area-inset-top)) max(var(--tour-side), env(safe-area-inset-right)) 0
-    max(var(--tour-side), env(safe-area-inset-left));
-  border: 0;
-  border-radius: 0;
-  box-shadow: none;
-}
-dialog.tour[open] {
-  display: flex;
-  flex-direction: column;
-}
-/* The page scrolls; nothing in it shrinks to fit. */
-dialog.tour > * {
-  flex-shrink: 0;
-}
-.tour-bar {
-  display: grid;
-  grid-template-columns: 44px 1fr 44px;
-  align-items: center;
-  min-height: 44px;
-}
-.tour-dots {
-  grid-column: 2;
-  display: flex;
-  justify-content: center;
-  gap: var(--space-8);
-}
-.tour-dots i {
-  width: 8px;
-  height: 8px;
-  border-radius: var(--radius-pill);
-  background: #ffffff2e;
-  transition: width 0.25s var(--ease-out), background 0.25s;
-}
-.tour-dots i.on {
-  width: 24px;
-  background: var(--accent);
-}
-.tour-bar .dialog-close {
-  grid-column: 3;
-  justify-self: end;
-}
-.tour > h2 {
-  margin: 0 0 var(--space-8);
-}
-.tour > p {
-  margin: 0;
-  line-height: 1.5;
-}
-.tour-steps {
-  padding: 0;
-  list-style: none;
-}
-.tour-steps li {
-  transition: background 0.25s;
-}
-.tour-steps .share-row-icon {
-  font-size: var(--font-size-small);
-  font-weight: 700;
-}
-.tour-steps li:not([aria-current]) .share-row-icon {
-  --k: var(--muted);
-}
-.tour-steps li[aria-current] {
-  background: color-mix(in srgb, var(--accent) 8%, transparent);
-}
-.tour > .dialog-note {
-  margin-top: var(--space-12);
-}
-/* Clear of the screen's bottom edge when no button sits under the list. */
-.tour-list {
-  padding-bottom: max(var(--space-20), env(safe-area-inset-bottom));
-}
-.tour-list > .share-summary:first-child {
-  margin-top: var(--space-20);
-}
-.tour-list .settings-heading {
-  margin: var(--space-24) 0 0;
-}
-.tour-list .share-summary {
-  margin-top: var(--space-8);
-}
-/* Help & ideas stands apart from Getting started under it. */
-.tour-list > .share-summary + .share-summary {
-  margin-top: var(--space-24);
-}
-.tour-list .share-row > svg:last-child {
-  color: var(--muted);
-}
 /* Help & ideas links leave for GitHub, so they end on an external link, not an arrow. */
 .help-link {
   color: inherit;
@@ -1207,242 +1107,6 @@ dialog.tour > * {
 }
 .help-link:active {
   background: #ffffff0f;
-}
-/* Always in reach at the bottom, over whatever scrolls under it. */
-#tour-next {
-  position: sticky;
-  bottom: max(var(--space-20), env(safe-area-inset-bottom));
-  flex: none;
-  width: 100%;
-  margin: auto 0 max(var(--space-20), env(safe-area-inset-bottom));
-  box-shadow:
-    0 0 0 var(--space-20) var(--bg),
-    0 var(--space-20) 0 var(--space-20) var(--bg);
-}
-/* An iPhone Pro Max: its 440×956 screen, Dynamic Island and home
-   indicator, drawn smaller. The app's own screens run in it, so everything
-   inside keeps the real sizes, spacing and safe areas. */
-.tour-phone {
-  --tour-scale: 0.6;
-  --tour-bezel: 5px;
-  position: relative;
-  flex: none;
-  width: calc(440px * var(--tour-scale) + 2 * var(--tour-bezel));
-  height: calc(956px * var(--tour-scale) + 2 * var(--tour-bezel));
-  margin: var(--space-12) auto var(--space-20);
-  overflow: hidden;
-  border: var(--tour-bezel) solid #151515;
-  border-radius: calc(62px * var(--tour-scale) + var(--tour-bezel));
-  box-shadow: 0 0 0 1px #ffffff26;
-  background: #000;
-}
-.tour-phone::before,
-.tour-phone::after {
-  content: "";
-  position: absolute;
-  left: 50%;
-  z-index: 1;
-  translate: -50% 0;
-  border-radius: var(--radius-pill);
-  pointer-events: none;
-}
-.tour-phone::before {
-  top: calc(11px * var(--tour-scale));
-  width: calc(126px * var(--tour-scale));
-  height: calc(37px * var(--tour-scale));
-  background: #000;
-}
-.tour-phone::after {
-  bottom: calc(8px * var(--tour-scale));
-  width: calc(150px * var(--tour-scale));
-  height: calc(5px * var(--tour-scale));
-  background: #fff;
-}
-/* Smaller phones get a smaller one, so the words still show below it. */
-@media (max-width: 375px), (max-height: 800px) {
-  .tour-phone {
-    --tour-scale: 0.5;
-  }
-}
-/* The transform makes the screen hold what the app fixes to the viewport;
-   what measures the viewport itself is measured against the screen here,
-   with the Pro Max's safe areas: 62px up top, 34px at the bottom. */
-.tour-screen {
-  --accent: var(--neon-add);
-  --edge-l: var(--space-12);
-  --edge-r: var(--space-12);
-  --surface-width: 416px;
-  --surface-left: var(--space-12);
-  --surface-padding: var(--space-20) var(--space-20) 34px;
-  --keyboard-inset: 0px;
-  position: absolute;
-  left: 0;
-  top: 0;
-  width: 440px;
-  height: 956px;
-  overflow: hidden;
-  transform: scale(var(--tour-scale));
-  transform-origin: 0 0;
-  background: var(--bg);
-  color: var(--text);
-  font-size: var(--font-size-body);
-  text-align: left;
-  user-select: none;
-  -webkit-user-select: none;
-  transition: opacity 0.4s ease;
-}
-.tour-screen .viewer {
-  --hud-top: 64px;
-  --hud-bottom: 22px;
-  position: absolute;
-  inset: 0;
-  z-index: auto;
-}
-/* Behind the library and Settings the map keeps its size, so the viewer
-   never has to fit itself to an empty screen. */
-.tour-screen .viewer[hidden] {
-  display: block !important;
-  visibility: hidden;
-}
-/* Starting over, the screen fades to black and back. */
-.tour-screen.fading {
-  opacity: 0;
-}
-.tour-screen :is(.home, .settings-page) {
-  --home-top: calc(var(--space-20) + 62px);
-  min-height: 100%;
-}
-.tour-screen .settings-page {
-  position: absolute;
-  inset: 0;
-  overflow: hidden;
-}
-.tour-screen .sheet {
-  max-height: calc(956px - var(--hud-top) - var(--hud-bottom) - var(--dock-h) - 16px);
-}
-.tour-screen .sheet:is([data-panel="trail"], [data-panel="display"], [data-panel="rotation"]) {
-  max-height: calc(956px - var(--hud-top) - var(--hud-bottom) - var(--dock-h) - 68px);
-}
-.tour-screen .toasts {
-  top: calc(var(--hud-top) + var(--icon-button-size) + var(--space-12));
-  max-width: var(--surface-width);
-}
-/* Dialogs open in place, not in the page's top layer, as phone cards. */
-.tour-screen dialog {
-  position: absolute;
-  inset: 0;
-  z-index: 41;
-  height: fit-content;
-  max-height: calc(100% - 62px - 34px);
-  margin: auto auto 34px;
-}
-.tour-screen .place-card[data-mode="view"] {
-  z-index: 20;
-  top: auto;
-  bottom: 34px;
-  max-height: calc(70% - var(--space-12));
-  margin-block: 0;
-  padding-bottom: var(--space-20);
-}
-.tour-screen .place-save {
-  padding-bottom: var(--space-20);
-}
-/* Open dialogs dim what's behind them, like their backdrop. */
-.tour-scrim {
-  position: absolute;
-  inset: 0;
-  z-index: 40;
-  background: rgb(0 0 0 / 0.72);
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.2s;
-}
-.tour-screen:has(dialog[open]:not(.place-card)) .tour-scrim {
-  opacity: 1;
-}
-.tour-screen:has(.place-card[open][data-mode="edit"]) .tour-scrim {
-  opacity: 1;
-  background: rgb(0 0 0 / 0.35);
-}
-.tour-screen [data-id="progress-fill"] {
-  animation: tour-fill 1.6s ease-out both;
-}
-@keyframes tour-fill {
-  from {
-    width: 0;
-  }
-  to {
-    width: 100%;
-  }
-}
-.tour-screen .map-card:not([hidden]) {
-  animation: pop-in 0.24s var(--ease-out);
-}
-/* What the finger taps flashes, ringed in red, as it's pressed. */
-.tour-screen .tapped {
-  animation: tour-press 0.6s ease-out;
-}
-@keyframes tour-press {
-  30% {
-    filter: brightness(1.6);
-    scale: 0.94;
-    box-shadow: 0 0 0 4px #ff3b30;
-  }
-}
-/* A finger is a point at the touch: a big white hand points at it, a red dot
-   shows while it presses and a red ring spreads from each press. */
-.tour-finger {
-  --touch: #ff3b30;
-  position: absolute;
-  left: 0;
-  top: 0;
-  z-index: 60;
-  width: 0;
-  height: 0;
-  opacity: 0;
-  pointer-events: none;
-}
-.tour-touch,
-.tour-ripple {
-  position: absolute;
-  left: -22px;
-  top: -22px;
-  width: 44px;
-  height: 44px;
-  border: 4px solid var(--touch);
-  border-radius: var(--radius-round);
-  opacity: 0;
-}
-.tour-touch {
-  background: rgb(255 59 48 / 0.45);
-  box-shadow: 0 0 16px var(--touch);
-}
-/* Lucide's pointer, its fingertip (8, 2 of 24) on the touch: white strokes
-   drawn wide under the dark ones make it a solid hand on any screen. */
-.tour-hand {
-  position: absolute;
-  left: -28px;
-  top: -7px;
-  width: 84px;
-  height: 84px;
-  transform-origin: 28px 7px;
-}
-.tour-hand svg {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  stroke: #111;
-  stroke-width: 1.8;
-}
-.tour-hand svg:first-child {
-  stroke: #fff;
-  stroke-width: 5;
-  filter: drop-shadow(0 0 1px #000) drop-shadow(0 0 1px #000) drop-shadow(0 4px 8px #0009);
-}
-/* The second of two fingers is the other hand. */
-.tour-finger + .tour-finger .tour-hand {
-  scale: -1 1;
 }
 
 /* ---------- Dialogs ---------- */
@@ -1622,7 +1286,6 @@ dialog p {
 .sheet-close,
 .sheet-share,
 .sheet-reset,
-.sheet-tutorial,
 .dialog-edit {
   position: relative;
   display: grid;
@@ -1641,7 +1304,6 @@ dialog p {
 .sheet-close::after,
 .sheet-share::after,
 .sheet-reset::after,
-.sheet-tutorial::after,
 .dialog-edit::after {
   content: "";
   position: absolute;
@@ -1651,7 +1313,6 @@ dialog p {
 .sheet-close svg,
 .sheet-share svg,
 .sheet-reset svg,
-.sheet-tutorial svg,
 .dialog-edit svg {
   width: 100%;
   height: 100%;
@@ -1660,7 +1321,6 @@ dialog p {
 .sheet-close:active:not(:disabled),
 .sheet-share:active:not(:disabled),
 .sheet-reset:active:not(:disabled),
-.sheet-tutorial:active:not(:disabled),
 .dialog-edit:active:not(:disabled) {
   background: color-mix(in srgb, var(--accent) 24%, var(--bg));
 }
@@ -1669,7 +1329,6 @@ dialog p {
   .sheet-close:hover:not(:disabled),
   .sheet-share:hover:not(:disabled),
   .sheet-reset:hover:not(:disabled),
-  .sheet-tutorial:hover:not(:disabled),
   .dialog-edit:hover:not(:disabled) {
     background: color-mix(in srgb, var(--accent) 22%, var(--bg));
     box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 60%, transparent);
@@ -1927,6 +1586,15 @@ dialog > a.quiet {
 #help-dialog .share-summary {
   margin-top: 0;
 }
+#help-dialog .settings-heading {
+  margin: var(--space-24) var(--space-12) var(--space-8);
+}
+#help-dialog .dialog-header + .settings-heading {
+  margin-top: var(--space-16);
+}
+#help-dialog .settings-heading + p {
+  margin-top: 0;
+}
 #help-dialog .dialog-note {
   margin-bottom: 0;
 }
@@ -2083,8 +1751,7 @@ dialog form > label {
 dialog form > label small {
   opacity: 0.7;
 }
-/* Not the dock's search field, which shows in the tutorials' phone. */
-dialog input:not([type="checkbox"], [type="radio"], .map-search),
+dialog input:not([type="checkbox"], [type="radio"]),
 dialog select,
 dialog textarea {
   display: block;
@@ -2469,6 +2136,156 @@ button.glass:active:not(:disabled) {
 }
 
 /* Bottom pill: Saved, a flexible search field, and a solid Add action. */
+/* ---------- Coach ---------- */
+/* One task at a time just above the bottom bar, in the lesson's color.
+   Panels, tools and cards bring their own hints, so it steps aside for them. */
+.coach {
+  --c: var(--neon-add);
+  --accent: var(--c);
+  position: absolute;
+  z-index: 5;
+  left: var(--edge-l);
+  right: var(--edge-r);
+  bottom: calc(var(--hud-bottom) + var(--dock-h) + var(--space-8));
+  width: var(--surface-width);
+  margin-inline: auto;
+  padding: var(--space-12) var(--space-12) var(--space-12) var(--space-16);
+  border: 1px solid color-mix(in srgb, var(--c) 55%, transparent);
+  border-radius: var(--radius-lg);
+  background: var(--glass-strong);
+  box-shadow: 0 10px 30px rgb(0 0 0 / 0.3);
+  animation: toast-in 0.2s ease-out;
+}
+.coach-card {
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+}
+.coach-icon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-round);
+  background: color-mix(in srgb, var(--c) 16%, #000);
+  color: var(--c);
+  transition: background-color 0.2s, color 0.2s;
+}
+.coach-icon svg {
+  width: 20px;
+  height: 20px;
+}
+.coach[data-state="done"] .coach-icon {
+  background: var(--c);
+  color: #000;
+}
+.coach-body {
+  flex: 1;
+  min-width: 0;
+}
+.coach-body small {
+  display: block;
+  font-size: var(--font-size-small);
+  color: var(--muted);
+}
+.coach-body p {
+  margin: var(--space-2) 0 0;
+  font-size: var(--font-size-body);
+  line-height: 1.35;
+  text-wrap: pretty;
+}
+.coach-actions {
+  margin-top: var(--space-12);
+}
+/* The hold gestures, acted out in the middle of the map: the hand presses,
+   waits for the wheel, slides toward the choice and lifts. Its fingertip is
+   the touch. */
+.coach-hand {
+  --dx: -56px;
+  --dy: -56px;
+  position: absolute;
+  z-index: 4;
+  left: 50%;
+  top: 45%;
+  width: 48px;
+  height: 48px;
+  margin: -4px 0 0 -16px;
+  color: #fff;
+  pointer-events: none;
+  transform-origin: 16px 4px;
+  filter: drop-shadow(0 2px 6px #000c);
+  animation: coach-hold 3.2s ease-in-out infinite;
+}
+.coach-hand[data-hand="back"] {
+  --dx: 56px;
+}
+.coach-hand[data-hand="trail"] {
+  --dx: 0px;
+  --dy: 72px;
+}
+.coach-hand svg {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+.coach-hand::before {
+  content: "";
+  position: absolute;
+  left: 16px;
+  top: 4px;
+  width: 28px;
+  height: 28px;
+  margin: -14px 0 0 -14px;
+  border: 2px solid var(--neon-saved);
+  border-radius: var(--radius-round);
+  opacity: 0;
+  animation: coach-press 3.2s ease-in-out infinite;
+}
+@keyframes coach-hold {
+  0% {
+    opacity: 0;
+    transform: translate(12px, 16px) scale(1.15);
+  }
+  12% {
+    opacity: 1;
+    transform: scale(1.15);
+  }
+  20%,
+  45% {
+    transform: none;
+  }
+  75% {
+    opacity: 1;
+    transform: translate(var(--dx), var(--dy));
+  }
+  85% {
+    opacity: 1;
+    transform: translate(var(--dx), var(--dy)) scale(1.15);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--dx), var(--dy)) scale(1.15);
+  }
+}
+@keyframes coach-press {
+  0%,
+  18% {
+    opacity: 0;
+  }
+  22%,
+  78% {
+    opacity: 1;
+  }
+  84%,
+  100% {
+    opacity: 0;
+  }
+}
+.viewer:has(#sheet:not([hidden]), #tool-bar:not([hidden]), dialog[open]) :is(.coach, .coach-hand) {
+  display: none;
+}
+
 .dock,
 .tool-bar,
 .sheet {
@@ -3935,8 +3752,7 @@ label.panel-row {
 }
 .sheet-close,
 .sheet-share,
-.sheet-reset,
-.sheet-tutorial {
+.sheet-reset {
   --accent: var(--c);
 }
 .section-title {

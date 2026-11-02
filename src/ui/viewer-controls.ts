@@ -47,13 +47,9 @@ import {
   type OcrIndex,
 } from "../ocr/index";
 import { matchPoints, searchMap, type MapSearchMatch } from "../viewer/map-search";
-import { track } from "../stats";
+import { happened, track } from "../stats";
 import { formatDistance, formatMinutes, formatWalk, pathLength, travelSummary } from "../viewer/measure";
 const sheets = ["trail", "display", "rotation", "saved", "add"] as const;
-/** The tutorial each panel's header button opens. */
-export const sheetTutorials: Record<(typeof sheets)[number], string> = {
-  trail: "trail", display: "view", rotation: "rotate", saved: "read-place", add: "add-place",
-};
 /** The place card's Delete and the trail mark's, each armed by a first tap. */
 const cardDeletes = ["marker-delete", "mark-delete"] as const;
 type CardDelete = (typeof cardDeletes)[number];
@@ -331,6 +327,7 @@ export class ViewerControls {
           end: (at) => {
             wheel.hidden = true;
             const choice = at && choiceAt(at);
+            if (choice) happened("map_held", { choice });
             if (choice === "place") this.openMarker(t("New place"), point);
             else if (choice === "back") this.backToMark();
             else if (choice === "trail") this.markTrail(point);
@@ -394,6 +391,7 @@ export class ViewerControls {
     this.dialog("mark-dialog").close();
     this.state.trail.push(mark);
     this.changed();
+    happened("trail_marked");
     this.toast(this.state.trail.length > 1 ? t("Trail point added") : t("Trip started"), "done", () => {
       this.state.trail = this.state.trail.filter((other) => other.time !== mark.time);
       this.changed();
@@ -411,6 +409,7 @@ export class ViewerControls {
     if (!last) return;
     if (last.view && this.viewer?.showView) this.viewer.showView(last.view);
     else this.viewer?.jumpTo(last);
+    happened("back_to_mark");
   }
   /** The red dot, read first: when it was marked. Edit offers Move and Delete. */
   private showMark() {
@@ -532,9 +531,6 @@ export class ViewerControls {
     this.el("close-sheet").hidden = name === "search";
     this.el("share-saved").hidden = name !== "saved" || !this.onShare;
     this.el("reset-rotation").hidden = name !== "rotation" || this.state.rotationMode === "compass";
-    const tutorial = this.el("sheet-tutorial");
-    tutorial.dataset.tutorial = name && name !== "search" ? sheetTutorials[name] : "";
-    tutorial.hidden = !tutorial.dataset.tutorial;
     this.el("sheet-title-icon").innerHTML =
       name === "display" ? icons.sun
       : name === "trail" ? icons.trail
@@ -2361,8 +2357,8 @@ export class ViewerControls {
     }
     // Empty lists keep a short status message.
     for (const [container, empty] of [
-      [markers, t("No places yet.")],
-      [routes, t("No routes yet.")],
+      [markers, t("No places yet. Hold the map to add one.")],
+      [routes, t("No routes yet. Tap Add, then Route.")],
       [trips, t("No trips yet.")],
     ] as const)
       if (lists.includes(container) && !container.childElementCount) {
@@ -2430,6 +2426,7 @@ export class ViewerControls {
       this.searchPosition = -1;
       this.viewer?.setSearch?.(this.searchMatches,
         !!normalizeText(this.searchQuery) && (!!this.ocr || !!this.searchMatches.length));
+      if (this.searchMatches.length) happened("search_found", { pair: this.searchQuery.includes(";") });
     }
     const active = !!normalizeText(this.searchQuery);
     const count = this.searchMatches.length;

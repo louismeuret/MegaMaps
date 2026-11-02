@@ -18,8 +18,10 @@ const choices = {
   "update-install": ["auto", "ask"],
   /** The hidden map overlay: tile borders and live stats. */
   debug: ["off", "on"],
-  /** Whether this device was shown Getting started, or offered it. */
+  /** Whether this device was welcomed on its first launch. */
   tour: ["new", "seen"],
+  /** Whether the tip to hold the map was shown, or the map was held. */
+  "hold-tip": ["new", "seen"],
   /** Whether removing the example map was offered, once there was a map of one's own. */
   "example-offer": ["new", "seen"],
 } as const;
@@ -41,7 +43,7 @@ export function preference<K extends keyof Preferences>(key: K): Preferences[K] 
   return (value !== null && allowed.includes(value) ? value : allowed[0]) as Preferences[K];
 }
 
-/** Reset the app: every setting back to its default, so Getting started and the example map come back as on a new install. */
+/** Reset the app: every setting back to its default, so the welcome and the example map come back as on a new install. */
 export function resetPreferences() {
   for (const key of Object.keys(choices)) localStorage.removeItem(`megamaps:${key}`);
 }

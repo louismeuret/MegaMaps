@@ -194,8 +194,8 @@ test("viewer controls: menu pill, panels, smart dark, layers, highlight, rotatio
     click("open-saved");
     // Empty Saved lists show their status without offering their own button.
     for (const [id, message] of [
-      ["marker-list", "No places yet."],
-      ["route-list", "No routes yet."],
+      ["marker-list", "No places yet. Hold the map to add one."],
+      ["route-list", "No routes yet. Tap Add, then Route."],
     ] as const) {
       assert.equal(el(id).querySelector(".empty-list")!.textContent, message);
       assert.equal(el(id).querySelector("button"), null);

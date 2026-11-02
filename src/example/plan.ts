@@ -5,7 +5,7 @@ import type { Point } from "../viewer/camera";
 // bring, room-and-pillar sectors on paper with named galleries, a haulage way,
 // wells, water, a collapse and the surveyor's labels. It's generated, always
 // the same, and drawn as a paper scan; the app darkens it like any other map.
-// The tutorials play over it and new users get it as a map to try things on.
+// New users get it as a map to practise on, with the coach.
 
 export const PLAN_WIDTH = 1200;
 export const PLAN_HEIGHT = 1400;
@@ -49,7 +49,7 @@ export interface Grid {
 export const gridPoint = ({ origin, angle, pitch }: Grid, i: number, j: number) =>
   add(add(origin, direction(angle), i * pitch[0]), direction(angle + 90), j * pitch[1]);
 
-/** The main sector, where the tutorials play: Allée 25 is column 0, Allée 55 row 0. */
+/** The main sector: Allée 25 is column 0, Allée 55 row 0. */
 export const mainGrid: Grid = { origin: { x: 627, y: 700 }, angle: -6, pitch: [36, 28], pillar: [24, 16] };
 export const crossing = (i: number, j: number) => gridPoint(mainGrid, i, j);
 /** The haulage way runs along this row of the main grid. */

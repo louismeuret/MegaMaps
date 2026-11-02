@@ -89,7 +89,7 @@ export const viewerMarkup = `
 </section>
 <button id="sheet-dismiss" class="sheet-dismiss" aria-label="${t("Close")}" hidden></button>
 <section id="sheet" class="sheet" aria-labelledby="sheet-title" hidden>
-  <div class="sheet-header"><span id="sheet-title-icon" class="dialog-title-icon" aria-hidden="true"></span><h2 id="sheet-title"></h2><button id="sheet-tutorial" class="sheet-tutorial" aria-label="${t("Tutorial")}" title="${t("Tutorial")}">${icons.tutorials}</button><button id="share-saved" class="sheet-share" aria-label="${t("Share map or selected items")}" hidden>${icons.share}</button><button id="reset-rotation" class="sheet-reset" aria-label="${t("Reset rotation to 0°")}" title="${t("Reset rotation to 0°")}" hidden>${icons.undo}</button><button id="close-sheet" class="sheet-close" aria-label="${t("Close")}">${icons.close}</button></div>
+  <div class="sheet-header"><span id="sheet-title-icon" class="dialog-title-icon" aria-hidden="true"></span><h2 id="sheet-title"></h2><button id="share-saved" class="sheet-share" aria-label="${t("Share map or selected items")}" hidden>${icons.share}</button><button id="reset-rotation" class="sheet-reset" aria-label="${t("Reset rotation to 0°")}" title="${t("Reset rotation to 0°")}" hidden>${icons.undo}</button><button id="close-sheet" class="sheet-close" aria-label="${t("Close")}">${icons.close}</button></div>
   <div class="sheet-content">
     <div id="sheet-display" data-panel="display" data-title="${t("View")}" hidden>
       <h3>${t("Map")}</h3>

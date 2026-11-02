@@ -2,6 +2,7 @@ import { dialogHeader, showDialog } from "./dialog";
 import { icons } from "./icons";
 import { language, t } from "../i18n";
 import { track } from "../stats";
+import { lessons, type Lesson } from "./coach";
 
 const REPOSITORY = "https://github.com/nslvdr/MegaMaps";
 /** GitHub turns away very long addresses; the start of an error says the most. */
@@ -45,10 +46,15 @@ export const helpLinksMarkup = `<div class="share-summary">${
 
 export const githubNote = t("Opens GitHub. Reading is free; writing needs a free account.");
 
-export const helpDialogMarkup = `<dialog id="help-dialog" aria-labelledby="help-title">${dialogHeader("help-title", t("Help & ideas"), icons.help, "help-close")}<p>${t("Mega Maps grows from what you ask. It all happens on GitHub, in the open.")}</p>${helpLinksMarkup}<p class="dialog-note">${githubNote}</p></dialog>`;
+// Each lesson plays on the example map, with the coach.
+const practiceMarkup = `<h3 class="settings-heading">${t("Practice on the example map")}</h3><div class="share-summary">${lessons.map((lesson) =>
+  `<button type="button" class="share-row" data-lesson="${lesson.id}"><span class="share-row-icon" style="--k:${lesson.color}">${lesson.icon}</span><span class="share-row-label">${lesson.title}</span>${icons.arrow}</button>`).join("")}</div>`;
 
-/** Fills in the app's details on every problem link and counts which topics people open. */
-export function initHelp(root: HTMLElement, dialog: HTMLDialogElement, app: string) {
+export const helpDialogMarkup = `<dialog id="help-dialog" aria-labelledby="help-title">${dialogHeader("help-title", t("Help & ideas"), icons.help, "help-close")}${practiceMarkup}<h3 class="settings-heading">${t("Ask and suggest")}</h3><p>${t("Mega Maps grows from what you ask. It all happens on GitHub, in the open.")}</p>${helpLinksMarkup}<p class="dialog-note">${githubNote}</p></dialog>`;
+
+/** Fills in the app's details on every problem link and counts which topics people open.
+ *  A lesson picked from the dialog goes to `practise`. */
+export function initHelp(root: HTMLElement, dialog: HTMLDialogElement, app: string, practise: (lesson: Lesson) => void = () => {}) {
   for (const link of root.querySelectorAll<HTMLAnchorElement>('a[data-help="problem"]'))
     link.href = helpUrl("problem", app);
   root.addEventListener("click", (event) => {
@@ -56,6 +62,13 @@ export function initHelp(root: HTMLElement, dialog: HTMLDialogElement, app: stri
     if (link) track("help_opened", { topic: link.dataset.help!, from: link.closest("[id]")?.id ?? "" });
   });
   dialog.querySelector("#help-close")!.addEventListener("click", () => dialog.close());
+  dialog.addEventListener("click", (event) => {
+    const id = (event.target as Element).closest<HTMLElement>("[data-lesson]")?.dataset.lesson;
+    const lesson = lessons.find((lesson) => lesson.id === id);
+    if (!lesson) return;
+    dialog.close();
+    practise(lesson);
+  });
   return {
     open: () => showDialog(dialog),
     /** An error dialog's link that reports this very problem. */
