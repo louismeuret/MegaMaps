@@ -1,5 +1,6 @@
 import { dialogHeader, showDialog } from "./dialog";
 import { formatBytes, plural } from "./format";
+import { githubNote, helpLinksMarkup } from "./help";
 import { icons } from "./icons";
 import { shareOrDownload } from "./save-file";
 import { language, locale, t } from "../i18n";
@@ -36,6 +37,7 @@ ${heading(t("Map"))}<div class="share-summary">${choice("label-size", icons.labe
 ${heading(t("You"))}<div class="share-summary">${choice("language", icons.language, t("Language"), [["fr", "Français"], ["en", "English"]])}<label class="share-row"><span class="share-row-icon settings-icon">${icons.user}</span>${label(t("Nickname"), t("On maps you send"))}<input id="settings-name" class="settings-name" type="text" maxlength="100" autocomplete="nickname" enterkeyhint="done" placeholder="${t("Add one")}"></label></div>
 ${heading(t("Your data"))}<div class="share-summary">${row("settings-backup", icons.backup, t("Save a backup"))}${row("settings-restore", icons.restore, t("Restore a backup"), t("Adds maps, keeps the ones here"))}<div class="share-row settings-storage" id="settings-storage"><span class="share-row-icon settings-icon">${icons.storage}</span><span class="share-row-label">${t("Storage")}</span><span class="share-row-value" id="settings-storage-status"></span></div></div>${note("", "backup-note")}<p class="settings-error" id="backup-error" role="alert" hidden></p><input type="file" id="restore-input" accept=".megabackup,application/octet-stream" hidden>
 ${heading(t("Updates"))}<div class="share-summary">${choice("update-install", icons.download, t("Install updates"), [["auto", t("Automatically")], ["ask", t("Ask first")]])}${row("settings-update", icons.update, t("Check for updates"))}${row("settings-whats-new", icons.sparkle, t("What’s new"), t("Changes in each version"))}</div>
+${heading(t("Help & ideas"))}${helpLinksMarkup}${note(githubNote)}
 <button type="button" class="settings-erase" id="settings-erase">${icons.reset}<span>${t("Reset")}</span></button>
 <p class="settings-foot">${t("No accounts: your maps, places and photos stay on this device.")}</p>
 <p class="settings-foot settings-credit">${t("Made by {name}", { name: `<strong>Nytro</strong>` })}</p>

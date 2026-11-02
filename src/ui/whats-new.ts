@@ -1,9 +1,10 @@
 import { changelog, type Release } from "../changelog";
 import { dialogHeader, showDialog } from "./dialog";
+import { helpLink } from "./help";
 import { icons } from "./icons";
 import { locale, t, type Message } from "../i18n";
 
-export const whatsNewMarkup = `<dialog id="whats-new" aria-labelledby="whats-new-title">${dialogHeader("whats-new-title", t("What’s new"), icons.sparkle, "whats-new-close")}<div id="whats-new-sections"></div><div class="dialog-actions"><button type="button" id="whats-new-done" class="primary">${icons.check}<span>${t("Got it")}</span></button></div></dialog>`;
+export const whatsNewMarkup = `<dialog id="whats-new" aria-labelledby="whats-new-title">${dialogHeader("whats-new-title", t("What’s new"), icons.sparkle, "whats-new-close")}<div id="whats-new-sections"></div><div class="share-summary whats-new-idea">${helpLink("idea", icons.idea, "var(--neon-view)", t("Have an idea for next time?"), t("Suggest it on GitHub"))}</div><div class="dialog-actions"><button type="button" id="whats-new-done" class="primary">${icons.check}<span>${t("Got it")}</span></button></div></dialog>`;
 
 const SEEN = "megamaps:changelog-seen";
 
