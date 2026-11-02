@@ -3,10 +3,9 @@ import assert from "node:assert/strict";
 import { parseHTML } from "linkedom";
 import { initTutorials, tutorialsMarkup } from "../src/ui/tutorials";
 import { sheetTutorials } from "../src/ui/viewer-controls";
-import { showScene, tapTarget } from "../src/ui/tour-screen";
 import { preference, setPreference } from "../src/preferences";
 
-function setup() {
+function setup(example?: Parameters<typeof initTutorials>[2]) {
   const { window, document } = parseHTML(`<html><body>${tutorialsMarkup}</body></html>`);
   // Linkedom omits native dialog behavior.
   for (const element of document.querySelectorAll<HTMLDialogElement>("dialog"))
@@ -21,7 +20,7 @@ function setup() {
   const tour = document.querySelector<HTMLDialogElement>("#tour")!;
   const offer = document.querySelector<HTMLDialogElement>("#tour-offer")!;
   const part = (id: string) => document.querySelector<HTMLElement>(`#${id}`)!;
-  return { tour, offer, part, tutorials: initTutorials(tour, offer) };
+  return { tour, offer, part, tutorials: initTutorials(tour, offer, example) };
 }
 
 test("the first launch opens Getting started once; someone with maps is asked instead", (t) => {
@@ -53,27 +52,31 @@ test("the first launch opens Getting started once; someone with maps is asked in
   assert.ok(!declined.offer.open && !declined.tour.open);
 });
 
-test("Getting started walks through the basics, then shows the tutorials before the app", (t) => {
+test("Getting started walks through the basics, then opens the example map to try them", (t) => {
   t.mock.timers.enable({ apis: ["setTimeout"] });
   setPreference("tour", "new");
-  const { tour, part, tutorials } = setup();
+  let opened = 0;
+  const { tour, part, tutorials } = setup({ ready: () => true, open: () => opened++ });
   tutorials.atLaunch(false);
   const titles = [part("tour-title").textContent];
   part("tour-next").click();
   titles.push(part("tour-title").textContent);
   part("tour-next").click();
   titles.push(part("tour-title").textContent);
+  assert.deepEqual(titles, ["Your maps, even underground", "Find your way around", "Import a map"]);
+  assert.equal(part("tour-next").textContent, "Try the example map");
   part("tour-next").click();
-  titles.push(part("tour-title").textContent);
-  assert.deepEqual(titles, ["Your maps, even underground", "Import a map", "Find your way around", "Help in every panel"]);
-  // Its last step taps the open panel's tutorial button.
-  showScene(part("tour-screen"), "view", true);
-  assert.ok(tapTarget(part("tour-screen"), "tutorial"));
-  assert.equal(part("tour-next").textContent, "See the tutorials");
+  assert.ok(!tour.open);
+  assert.equal(opened, 1);
+});
 
+test("without an example map, Getting started just starts the app", (t) => {
+  t.mock.timers.enable({ apis: ["setTimeout"] });
+  const { tour, part, tutorials } = setup({ ready: () => false, open: () => assert.fail("no example to open") });
+  tutorials.openList();
+  tour.querySelector<HTMLElement>('[data-guide="basics"]')!.click();
   part("tour-next").click();
-  assert.equal(tour.dataset.view, "list");
-  assert.ok(part("tour-phone").hidden);
+  part("tour-next").click();
   assert.equal(part("tour-next").textContent, "Start using Mega Maps");
   part("tour-next").click();
   assert.ok(!tour.open);

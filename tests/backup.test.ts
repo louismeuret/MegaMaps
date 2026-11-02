@@ -104,6 +104,7 @@ test("a backup is due once a month has passed with maps added or opened since th
   const now = 100 * 86_400_000;
   const map = { created: now - 90 * 86_400_000, opened: now - 86_400_000 };
   assert.equal(backupDue([], undefined, now), false, "nothing to back up yet");
+  assert.equal(backupDue([{ ...map, example: true }], undefined, now), false, "the example map holds nothing to lose");
   assert.equal(backupDue([map], undefined, now), true, "never backed up");
   assert.equal(backupDue([map], now - BACKUP_INTERVAL + 1, now), false, "the last backup is recent");
   assert.equal(backupDue([map], now - BACKUP_INTERVAL, now), true, "the map was opened after an old backup");

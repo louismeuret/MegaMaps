@@ -20,6 +20,8 @@ const choices = {
   debug: ["off", "on"],
   /** Whether this device was shown Getting started, or offered it. */
   tour: ["new", "seen"],
+  /** Whether removing the example map was offered, once there was a map of one's own. */
+  "example-offer": ["new", "seen"],
 } as const;
 
 export type Preferences = { -readonly [K in keyof typeof choices]: (typeof choices)[K][number] };

@@ -31,7 +31,7 @@ import { backupDue, isBackupFile, restoreBackup, type Backup } from "./storage/b
 import { loadSetting } from "./storage/settings";
 import { protectStorage, storageProtected } from "./storage/protection";
 import { language, locale, t } from "./i18n";
-import { preference, resetPreferences } from "./preferences";
+import { preference, resetPreferences, setPreference } from "./preferences";
 import { importAnnotations, importNewCopy } from "./sharing/storage";
 import { isShareFile } from "./sharing/format";
 import { initInstallPage, installMarkup, isInstalled } from "./ui/install-page";
@@ -383,7 +383,7 @@ async function openMap(map: MapRecord) {
       controls.options(),
     );
     controls.attach(viewer);
-    track("map_opened", { ok: true, megapixels: Math.round(map.width * map.height / 1e6),
+    track("map_opened", { ok: true, example: !!map.example, megapixels: Math.round(map.width * map.height / 1e6),
       places: state.markers.length, routes: state.routes.length, ms: Date.now() - started });
     void prepareMapSearch(map, version);
     await setLastMap(map.id);
@@ -464,7 +464,13 @@ async function refresh() {
   if (home.hidden) return;
   void showBackupReminder();
   grid.replaceChildren();
-  element("empty").hidden = maps.length > 0;
+  // Until there's a map of their own, the example doesn't stand in for one:
+  // the invitation to import stays below it.
+  const onlyExample = maps.length > 0 && maps.every((map) => map.example);
+  element("empty").hidden = maps.length > 0 && !onlyExample;
+  element("empty-title").textContent = onlyExample ? t("Now import your own map") : t("Your next route starts here");
+  element("example-done").hidden = !(maps.some((map) => map.example) && maps.some((map) => !map.example)
+    && preference("example-offer") !== "seen");
   element("map-count").textContent = `${maps.length}`;
   // A 0 beside the empty state says nothing it doesn't.
   element("map-count").hidden = !maps.length;
@@ -593,9 +599,18 @@ async function refresh() {
       });
   }
 }
+// Asked once: removing goes through the usual delete, keeping just hides it.
+for (const [id, remove] of [["example-remove", true], ["example-keep", false]] as const)
+  element(id).addEventListener("click", () => {
+    setPreference("example-offer", "seen");
+    element("example-done").hidden = true;
+    track("example_offer_answered", { remove });
+    const example = maps.find((map) => map.example);
+    if (remove && example) confirmDelete(example);
+  });
 const importDialog = element<HTMLDialogElement>("import-dialog");
 element("import-open").addEventListener("click", () => showDialog(importDialog));
-// On first run the whole empty card is a target too; Import stays the labelled control.
+// The whole empty card is a target too; Import stays the labelled control.
 element("empty").addEventListener("click", () => element("import-open").click());
 element("import-cancel").addEventListener("click", () => importDialog.close());
 // Each row only narrows the picker; the file's header decides how it is imported.
@@ -717,7 +732,14 @@ progressDialog.addEventListener("cancel", (event) => {
   event.preventDefault();
   importing?.abort();
 });
-const tutorials = initTutorials(element("tour"), element("tour-offer"));
+const tutorials = initTutorials(element("tour"), element("tour-offer"), {
+  ready: () => preparingExample !== undefined || maps.some((map) => map.example),
+  // Once it's made, unless the user went elsewhere meanwhile.
+  open: () => void (preparingExample ?? Promise.resolve()).then(() => {
+    const example = maps.find((map) => map.example);
+    if (example && !home.hidden && !currentMap) return openMap(example);
+  }),
+});
 const whatsNew = initWhatsNew(element("whats-new"));
 element("tutorials-open").addEventListener("click", () => tutorials.openList());
 element("tour-help").addEventListener("click", () => help.open());
@@ -1042,10 +1064,11 @@ async function start() {
   const map = maps.find((map) => map.id === resume);
   if (map) await openMap(map);
   retileMaps();
-  const newcomer = !maps.length && preference("tour") !== "seen";
+  // Made while Getting started plays, which ends by opening it.
+  if (!maps.length && preference("tour") !== "seen")
+    preparingExample = addExample().finally(() => (preparingExample = undefined));
   const touring = tutorials.atLaunch(maps.length > 0);
   whatsNew.atLaunch(maps.length > 0, !touring);
-  if (newcomer) preparingExample = addExample().finally(() => (preparingExample = undefined));
 }
 // New users get the example map to try things on, made while Getting started plays.
 async function addExample() {

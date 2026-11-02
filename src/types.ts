@@ -32,6 +32,8 @@ export interface MapRecord {
   offlineVerifiedAt?: number;
   /** The original's size, when it was too large and the map was shrunk to fit. */
   shrunkFrom?: { width: number; height: number };
+  /** The example map new users get, to try things on before importing their own. */
+  example?: true;
   /** SHA-256 of the original image, calculated lazily for sharing. */
   fingerprint?: string;
 }
