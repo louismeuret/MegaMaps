@@ -3,7 +3,7 @@ import { formatBytes, plural } from "./format";
 import { githubNote, helpLinksMarkup } from "./help";
 import { icons } from "./icons";
 import { shareOrDownload } from "./save-file";
-import { language, locale, t } from "../i18n";
+import { language, locale, t, errorMessage } from "../i18n";
 import { formatDistance } from "../viewer/measure";
 import { preference, setPreference, type Preferences } from "../preferences";
 import { backupDue, backupSummary, createBackup, readBackup, type Backup } from "../storage/backup";
@@ -70,7 +70,6 @@ interface SettingsOptions {
 type Erase = "data" | "app";
 
 const day = (date: Date | number) => new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(date);
-const errorMessage = (error: unknown) => error instanceof Error ? error.message : String(error);
 // Each step's button wakes up after a pause, so a hurried triple tap can't pass all three.
 export const ERASE_STEP_PAUSE = 800;
 /** How long Check for updates is held to turn the hidden map debug overlay on or off. */

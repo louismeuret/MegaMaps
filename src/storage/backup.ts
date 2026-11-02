@@ -1,4 +1,4 @@
-import { t } from "../i18n";
+import { errorMessage, t } from "../i18n";
 import type { ImportProgress, MapRecord } from "../types";
 import { MAX_FILE_BYTES } from "../types";
 import { readOcrIndex, type OcrIndex } from "../ocr/index";
@@ -237,7 +237,7 @@ export async function restoreBackup(
       });
     } catch (error) {
       if (!added || (error instanceof DOMException && error.name === "AbortError")) throw error;
-      const reason = error instanceof Error ? error.message : String(error);
+      const reason = errorMessage(error);
       throw new Error(t("{restored} of {total} maps were restored before this problem: {reason}", { restored: added, total: missing.length, reason }));
     }
     added++;

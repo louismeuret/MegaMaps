@@ -8,7 +8,7 @@ import { exportFile, matchingMaps, prepareExport, type ImportMode, type Prepared
 import { loadNavigation } from "../storage/navigation";
 import { displayName, formatBytes, plural } from "./format";
 import { icons } from "./icons";
-import { t } from "../i18n";
+import { t, errorMessage } from "../i18n";
 import { downloadFile } from "./save-file";
 import { placeIcon } from "./place-icon";
 import { track } from "../stats";
@@ -33,7 +33,6 @@ interface SharingOptions {
   import: (share: SharedMap, destination: ShareDestination) => Promise<ShareImportResult>;
   imported: (result: ShareImportResult, destination: ShareDestination) => Promise<void>;
 }
-const errorMessage = (error: unknown) => error instanceof Error ? error.message : String(error);
 
 /** Owns selection, native file sharing, and the review step before any storage writes. */
 export function initSharing(root: HTMLElement, options: SharingOptions) {

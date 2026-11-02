@@ -9,7 +9,7 @@ import { Viewer } from "./viewer/viewer";
 import { registerOfflineShell } from "./pwa";
 import { findAppUpdate, installAppUpdate } from "./app-update";
 import { icons } from "./ui/icons";
-import { displayName, errorMessage, formatBytes, lastUsed, plural } from "./ui/format";
+import { displayName, formatBytes, lastUsed, plural } from "./ui/format";
 import { viewerMarkup } from "./ui/viewer-markup";
 import { ViewerControls } from "./ui/viewer-controls";
 import { loadNavigation, lastMap, setLastMap } from "./storage/navigation";
@@ -30,7 +30,7 @@ import { eraseDialogMarkup, initSettingsPage, resetMarkup, restoreDialogMarkup, 
 import { backupDue, isBackupFile, restoreBackup, type Backup } from "./storage/backup";
 import { loadSetting } from "./storage/settings";
 import { protectStorage, storageProtected } from "./storage/protection";
-import { language, locale, t } from "./i18n";
+import { language, locale, t, errorMessage } from "./i18n";
 import { preference, resetPreferences, setPreference } from "./preferences";
 import { importAnnotations, importNewCopy } from "./sharing/storage";
 import { isShareFile } from "./sharing/format";
