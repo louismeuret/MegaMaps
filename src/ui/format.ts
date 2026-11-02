@@ -15,6 +15,17 @@ export function formatBytes(bytes: number) {
   return t("{size} GB", { size: size(1024 ** 3) });
 }
 
+/** What went wrong, in words people can act on: a browser's own file and
+ * storage errors are terse, technical and never translated. */
+export function errorMessage(error: unknown) {
+  const name = error instanceof Error ? error.name : "";
+  if (name === "NotReadableError")
+    return t("This file can’t be read. If it’s in a cloud folder, save it to the device first, then try again.");
+  if (name === "QuotaExceededError")
+    return t("Not enough device storage. Delete a map or free space and try again.");
+  return error instanceof Error ? error.message : String(error);
+}
+
 /** Map names keep their file name in storage; the list hides the extension. */
 export function displayName(name: string) {
   return name.replace(/\.(jpe?g|png|webp)$/i, "") || name;

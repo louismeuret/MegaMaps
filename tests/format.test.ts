@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { changeLine, lastUsed, nextName, updatedAgo } from "../src/ui/format";
+import { changeLine, errorMessage, lastUsed, nextName, updatedAgo } from "../src/ui/format";
 import type { PlaceChange } from "../src/viewer/navigation";
 
 test("cards say when a map was last opened, or added if never opened", () => {
@@ -52,4 +52,12 @@ test("an edit shows each change as its field, then what it became", () => {
     "a first level has nothing to come from");
   assert.deepEqual(water(2), { field: "Water level", detail: "removed" });
   assert.deepEqual(changeLine({ field: "danger", from: 1, to: 2 }), { field: "Danger level", from: "Moderate", to: "Severe" });
+});
+
+test("a browser's unreadable-file and full-storage errors read as advice, others as they are", () => {
+  const error = (name: string, message: string) => Object.assign(new Error(message), { name });
+  assert.match(errorMessage(error("NotReadableError", "The requested file could not be read")), /cloud folder/);
+  assert.match(errorMessage(new DOMException("The quota has been exceeded.", "QuotaExceededError")), /Not enough device storage/);
+  assert.equal(errorMessage(new Error("Choose a JPEG, PNG, or WebP image.")), "Choose a JPEG, PNG, or WebP image.");
+  assert.equal(errorMessage("offline"), "offline");
 });

@@ -544,6 +544,7 @@ export const fr = {
   "This map was removed in another window.": "Cette carte a été supprimée dans une autre fenêtre.",
   "This photo could not be added.": "Impossible d’ajouter cette photo.",
   "This photo could not be read. Choose a JPEG, PNG, WebP or HEIC image.": "Impossible de lire cette photo. Choisissez une image JPEG, PNG, WebP ou HEIC.",
+  "This file can’t be read. If it’s in a cloud folder, save it to the device first, then try again.": "Impossible de lire ce fichier. S’il est dans un dossier en ligne, enregistrez-le d’abord sur l’appareil, puis réessayez.",
   "This removes the map and its saved routes and places from this device.": "La carte et ses itinéraires et lieux enregistrés seront supprimés de cet appareil.",
   "This removes the map and its {saved} from this device.": "La carte et ses {saved} seront supprimés de cet appareil.",
   "This removes the map from this device.": "La carte sera supprimée de cet appareil.",

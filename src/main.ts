@@ -9,7 +9,7 @@ import { Viewer } from "./viewer/viewer";
 import { registerOfflineShell } from "./pwa";
 import { findAppUpdate, installAppUpdate } from "./app-update";
 import { icons } from "./ui/icons";
-import { displayName, formatBytes, lastUsed, plural } from "./ui/format";
+import { displayName, errorMessage, formatBytes, lastUsed, plural } from "./ui/format";
 import { viewerMarkup } from "./ui/viewer-markup";
 import { ViewerControls } from "./ui/viewer-controls";
 import { loadNavigation, lastMap, setLastMap } from "./storage/navigation";
@@ -179,17 +179,17 @@ const openRenameMap = initMapRename(
     await refresh();
   },
 );
-function showMessage(title: string, message: string, problem = false) {
+function showMessage(title: string, message: string, problem = false, detail = message) {
   element("message-title").textContent = title;
   element("message-body").textContent = message;
   const report = element<HTMLAnchorElement>("message-report");
   report.hidden = !problem;
-  if (problem) help.report(report, { title, error: message });
+  if (problem) help.report(report, { title, error: detail });
   if (!messageDialog.open) showDialog(messageDialog);
 }
-// Something went wrong: say what, and offer to report it with the details filled in.
+// Something went wrong: say what, and offer to report it with the browser's own words filled in.
 const showError = (title: string, error: unknown) =>
-  showMessage(title, error instanceof Error ? error.message : String(error), true);
+  showMessage(title, errorMessage(error), true, failure(error));
 // Ask before downloading; keep the current map/session and wait for durable saves before reloading.
 const updates = initUpdateDialog(element<HTMLDialogElement>("update-dialog"), {
   currentRelease: Number.isFinite(loadedRelease.getTime()) ? loadedRelease : undefined,
