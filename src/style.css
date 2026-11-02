@@ -651,6 +651,9 @@ small {
 .settings-storage .settings-icon {
   --k: var(--muted);
 }
+.reset-page .settings-icon {
+  --k: var(--danger);
+}
 .settings-page .share-row-label small:empty {
   display: none;
 }
@@ -682,7 +685,7 @@ small {
   transform: translateY(-50%);
   pointer-events: none;
 }
-/* The one irreversible action stays quiet, apart from the settings it would remove. */
+/* Reset, the way to irreversible actions, stays quiet, apart from the settings. */
 .settings-erase {
   display: flex;
   align-items: center;

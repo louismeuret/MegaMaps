@@ -99,7 +99,7 @@ export async function deleteStoredMap(map: MapRecord) {
   await removeRecord(map.id);
 }
 
-/** Settings' Delete everything: every map with what it holds, then the stored settings. */
+/** Reset's Delete all data: every map with what it holds, then the stored settings. */
 export async function deleteAllData() {
   for (const map of await listMaps()) await deleteStoredMap(map);
   await transact("settings", "readwrite", (store) => store.clear());

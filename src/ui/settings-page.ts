@@ -36,14 +36,20 @@ ${heading(t("Map"))}<div class="share-summary">${choice("label-size", icons.labe
 ${heading(t("You"))}<div class="share-summary">${choice("language", icons.language, t("Language"), [["fr", "Français"], ["en", "English"]])}<label class="share-row"><span class="share-row-icon settings-icon">${icons.user}</span>${label(t("Nickname"), t("On maps you send"))}<input id="settings-name" class="settings-name" type="text" maxlength="100" autocomplete="nickname" enterkeyhint="done" placeholder="${t("Add one")}"></label></div>
 ${heading(t("Your data"))}<div class="share-summary">${row("settings-backup", icons.backup, t("Save a backup"))}${row("settings-restore", icons.restore, t("Restore a backup"), t("Adds maps, keeps the ones here"))}<div class="share-row settings-storage" id="settings-storage"><span class="share-row-icon settings-icon">${icons.storage}</span><span class="share-row-label">${t("Storage")}</span><span class="share-row-value" id="settings-storage-status"></span></div></div>${note("", "backup-note")}<p class="settings-error" id="backup-error" role="alert" hidden></p><input type="file" id="restore-input" accept=".megabackup,application/octet-stream" hidden>
 ${heading(t("Updates"))}<div class="share-summary">${choice("update-install", icons.download, t("Install updates"), [["auto", t("Automatically")], ["ask", t("Ask first")]])}${row("settings-update", icons.update, t("Check for updates"))}${row("settings-whats-new", icons.sparkle, t("What’s new"), t("Changes in each version"))}</div>
-<button type="button" class="settings-erase" id="settings-erase">${icons.trash}<span>${t("Delete everything")}</span></button>
+<button type="button" class="settings-erase" id="settings-erase">${icons.reset}<span>${t("Reset")}</span></button>
 <p class="settings-foot">${t("No accounts: your maps, places and photos stay on this device.")}</p>
 <p class="settings-foot settings-credit">${t("Made by {name}", { name: `<strong>Nytro</strong>` })}</p>
 </section>`;
 
+// Reached from Settings' Reset: the two ways to start over, each confirmed in three steps.
+export const resetMarkup = `<section id="reset" class="settings-page reset-page" aria-labelledby="reset-title" hidden><div class="top-edge" aria-hidden="true"></div>
+<header class="page-header"><button type="button" class="page-back" id="reset-back" aria-label="${t("Back")}" title="${t("Back")}">${icons.arrow}</button><h1 id="reset-title">${t("Reset")}</h1></header>
+${heading(t("Start over"))}<div class="share-summary">${row("reset-data", icons.trash, t("Delete all data"), t("Maps, places and photos; settings stay"))}${row("reset-app", icons.reset, t("Reset the app"), t("All data, and settings back to default"))}</div>
+</section>`;
+
 export const restoreDialogMarkup = `<dialog id="restore-dialog" aria-labelledby="restore-title" aria-describedby="restore-summary">${dialogHeader("restore-title", t("Restore backup"), icons.restore, "restore-cancel")}<p id="restore-summary"></p><p class="dialog-note" id="restore-note"></p><div class="dialog-actions" id="restore-actions"><button class="primary" id="restore-confirm">${icons.restore}<span>${t("Restore")}</span></button></div></dialog>`;
 
-export const eraseDialogMarkup = `<dialog id="erase-dialog" aria-labelledby="erase-title" aria-describedby="erase-summary">${dialogHeader("erase-title", t("Delete everything"), icons.trash, "erase-cancel")}<p id="erase-summary"></p><p class="dialog-note" id="erase-step"></p><div class="dialog-actions"><button class="danger" id="erase-confirm">${icons.trash}<span></span></button><button class="secondary" id="erase-backup" hidden>${icons.backup}<span>${t("Save a backup first")}</span></button></div></dialog>`;
+export const eraseDialogMarkup = `<dialog id="erase-dialog" aria-labelledby="erase-title" aria-describedby="erase-summary">${dialogHeader("erase-title", "", icons.trash, "erase-cancel")}<p id="erase-summary"></p><p class="dialog-note" id="erase-step"></p><div class="dialog-actions"><button class="danger" id="erase-confirm">${icons.trash}<span></span></button><button class="secondary" id="erase-backup" hidden>${icons.backup}<span>${t("Save a backup first")}</span></button></div></dialog>`;
 
 interface SettingsOptions {
   /** Name of the loaded version, such as 2026.10.30-14.32-13c17c2, when known. */
@@ -53,11 +59,13 @@ interface SettingsOptions {
   openWhatsNew(): void;
   /** Rebuild the backup's missing maps; reports its own progress and outcome. */
   restore(backup: Backup): void;
-  /** Remove every map and setting once all three steps are confirmed; reports its own outcome. */
-  erase(): void;
+  /** Once all three steps are confirmed, remove every map ("data") or everything the app keeps ("app"); reports its own outcome. */
+  erase(what: Erase): void;
   /** Apply a new label size to the maps shown from now on. */
   setLabelSize(size: Preferences["label-size"]): void;
 }
+
+type Erase = "data" | "app";
 
 const day = (date: Date | number) => new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(date);
 const errorMessage = (error: unknown) => error instanceof Error ? error.message : String(error);
@@ -66,9 +74,9 @@ export const ERASE_STEP_PAUSE = 800;
 /** How long Check for updates is held to turn the hidden map debug overlay on or off. */
 export const DEBUG_HOLD = 1500;
 
-export function initSettingsPage(page: HTMLElement, dialogs: { restore: HTMLDialogElement; erase: HTMLDialogElement }, options: SettingsOptions) {
+export function initSettingsPage(page: HTMLElement, parts: { reset: HTMLElement; restore: HTMLDialogElement; erase: HTMLDialogElement }, options: SettingsOptions) {
   const part = <T extends HTMLElement = HTMLElement>(root: HTMLElement, id: string) => root.querySelector<T>(`#${id}`)!;
-  const { restore: dialog, erase: eraseDialog } = dialogs;
+  const { reset: resetPage, restore: dialog, erase: eraseDialog } = parts;
   const name = part<HTMLInputElement>(page, "settings-name");
   const backupRow = part<HTMLButtonElement>(page, "settings-backup");
   const restoreInput = part<HTMLInputElement>(page, "restore-input");
@@ -221,17 +229,24 @@ export function initSettingsPage(page: HTMLElement, dialogs: { restore: HTMLDial
 
   // Three distinct confirmations: what goes, that there's no undo, then a last check.
   let eraseStep = 0, eraseTimer = 0;
-  let erasing: { maps: number; lastBackup?: number } | undefined;
+  let erasing: { what: Erase; maps: number; lastBackup?: number } | undefined;
   function showEraseStep() {
     if (!erasing) return;
-    const { maps, lastBackup } = erasing;
+    const { what, maps, lastBackup } = erasing;
+    const app = what === "app";
     const steps = [
-      [t("Every map on this device goes, with its places, routes, photos and detected text, along with your nickname and backup date."), t("Continue")],
+      [app
+        ? t("Every map on this device goes, with its places, routes, photos and detected text, and every setting, such as language and nickname, goes back to its default.")
+        : t("Every map on this device goes, with its places, routes, photos and detected text, along with your nickname and backup date. Other settings stay."), t("Continue")],
       [lastBackup
         ? t("There’s no undo. Your last backup is from {date}: anything added or changed since is lost.", { date: day(lastBackup) })
-        : t("There’s no undo, and you haven’t saved a backup. Save one first if you might want these maps again."), t("Delete everything")],
-      [t("Last check: delete {maps} from this device for good?", { maps: plural(maps, "map") }), t("Delete forever")],
+        : t("There’s no undo, and you haven’t saved a backup. Save one first if you might want these maps again."), app ? t("Reset the app") : t("Delete all data")],
+      [app
+        ? t("Last check: delete {maps} and reset Mega Maps?", { maps: plural(maps, "map") })
+        : t("Last check: delete {maps} from this device for good?", { maps: plural(maps, "map") }), app ? t("Reset now") : t("Delete forever")],
     ] as const;
+    part(eraseDialog, "erase-title").textContent = app ? t("Reset the app") : t("Delete all data");
+    part(eraseDialog, "erase-title-icon").innerHTML = app ? icons.reset : icons.trash;
     const [text, action] = steps[eraseStep]!;
     part(eraseDialog, "erase-summary").textContent = text;
     part(eraseDialog, "erase-step").textContent = t("Step {step} of 3", { step: eraseStep + 1 });
@@ -241,24 +256,35 @@ export function initSettingsPage(page: HTMLElement, dialogs: { restore: HTMLDial
     clearTimeout(eraseTimer);
     eraseTimer = window.setTimeout(() => { eraseConfirm.disabled = false; }, ERASE_STEP_PAUSE);
   }
-  part(page, "settings-erase").addEventListener("click", async () => {
-    const [maps, lastBackup] = await Promise.all([
-      listMaps().then((maps) => maps.filter((map) => map.status === "ready").length),
-      loadSetting("last-backup").catch(() => undefined),
-    ]);
-    erasing = { maps, lastBackup };
-    eraseStep = 0;
-    showEraseStep();
-    showDialog(eraseDialog);
-  });
+  // Reset is a page of its own over Settings, and Back returns to Settings.
+  const showReset = (shown: boolean) => {
+    resetPage.hidden = !shown;
+    page.hidden = shown;
+    window.scrollTo(0, 0);
+  };
+  part(page, "settings-erase").addEventListener("click", () => showReset(true));
+  part(resetPage, "reset-back").addEventListener("click", () => showReset(false));
+  for (const what of ["data", "app"] as const)
+    part(resetPage, `reset-${what}`).addEventListener("click", async () => {
+      const [maps, lastBackup] = await Promise.all([
+        listMaps().then((maps) => maps.filter((map) => map.status === "ready").length).catch(() => 0),
+        loadSetting("last-backup").catch(() => undefined),
+      ]);
+      erasing = { what, maps, lastBackup };
+      eraseStep = 0;
+      showEraseStep();
+      showDialog(eraseDialog);
+    });
   eraseConfirm.addEventListener("click", () => {
     if (!erasing || eraseConfirm.disabled) return;
     if (eraseStep < 2) {
       eraseStep++;
       return showEraseStep();
     }
+    const { what } = erasing;
     eraseDialog.close();
-    options.erase();
+    showReset(false);
+    options.erase(what);
   });
   // A fresh backup answers the second step's worry.
   eraseBackup.addEventListener("click", async () => {
