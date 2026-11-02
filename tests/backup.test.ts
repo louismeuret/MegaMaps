@@ -142,7 +142,7 @@ test("resetting the settings makes the app new again but keeps the same device",
   localStorage.setItem("megamaps:changelog-seen", "abc1234");
   resetPreferences();
   assert.equal(localStorage.getItem("megamaps:label-size"), null);
-  assert.equal(preference("tour"), "new", "Getting started and the example map come back");
+  assert.equal(preference("tour"), "new", "the welcome and the example map come back");
   assert.equal(localStorage.getItem("megamaps:stats-id"), "device", "stats keep counting the same device");
   assert.equal(localStorage.getItem("megamaps:changelog-seen"), "abc1234");
 });

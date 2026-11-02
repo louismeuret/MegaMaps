@@ -31,7 +31,7 @@ export class SearchOverlay {
   private active = false;
   private selected = 0;
   constructor(private svg: SVGSVGElement) {
-    // Its own mask, since the tutorials run a second viewer beside the app's.
+    // Its own mask id, so another overlay on the page never borrows it.
     const id = ++overlays;
     svg.innerHTML =
       `<defs><mask id="map-search-mask-${id}" maskUnits="userSpaceOnUse" maskContentUnits="userSpaceOnUse"><rect width="100%" height="100%" fill="white"/></mask></defs><rect width="100%" height="100%" fill="black" fill-opacity="0.55" mask="url(#map-search-mask-${id})"/><g class="search-highlights"></g>`;

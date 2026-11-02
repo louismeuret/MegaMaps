@@ -35,7 +35,7 @@ import { preference, resetPreferences, setPreference } from "./preferences";
 import { importAnnotations, importNewCopy } from "./sharing/storage";
 import { isShareFile } from "./sharing/format";
 import { initInstallPage, installMarkup, isInstalled } from "./ui/install-page";
-import { initTutorials, tutorialsMarkup } from "./ui/tutorials";
+import { coachMarkup, initCoach, welcomeMarkup, type Lesson } from "./ui/coach";
 import { initWhatsNew, whatsNewMarkup } from "./ui/whats-new";
 import { describeApp, helpDialogMarkup, initHelp } from "./ui/help";
 import { failure, setPerson, startStats, track } from "./stats";
@@ -48,7 +48,7 @@ app.innerHTML = `
   ${settingsMarkup}
   ${resetMarkup}
   ${installMarkup}
-  <section id="viewer" class="viewer" aria-label="${t("Map viewer")}" hidden>${viewerMarkup}</section>
+  <section id="viewer" class="viewer" aria-label="${t("Map viewer")}" hidden>${viewerMarkup}${coachMarkup}</section>
   <input type="file" id="file-input" hidden>
   ${importDialogsMarkup}
   <dialog id="message-dialog" aria-labelledby="message-title" aria-describedby="message-body">${dialogHeader("message-title", "", icons.sparkle, "message-dismiss")}<p id="message-body"></p><button class="primary" id="message-close">${icons.check}<span>${t("Got it")}</span></button><a class="quiet" id="message-report" target="_blank" rel="noopener" data-help="problem" hidden>${icons.bug}<span>${t("Report this problem")}</span></a></dialog>
@@ -58,7 +58,7 @@ app.innerHTML = `
   ${updateDialogMarkup}
   ${restoreDialogMarkup}
   ${eraseDialogMarkup}
-  ${tutorialsMarkup}
+  ${welcomeMarkup}
   ${whatsNewMarkup}
   ${helpDialogMarkup}
   ${mapDialogsMarkup}
@@ -97,7 +97,8 @@ if (released) {
   // A browser tab only shows how to install, and sends nothing.
   if (isInstalled()) startStats(releaseName ?? loadedVersion);
 }
-const help = initHelp(app, element<HTMLDialogElement>("help-dialog"), describeApp(releaseName ?? loadedVersion, isInstalled()));
+const help = initHelp(app, element<HTMLDialogElement>("help-dialog"), describeApp(releaseName ?? loadedVersion, isInstalled()),
+  (lesson) => void practise(lesson, "help"));
 const canUpdate = import.meta.env.PROD && "serviceWorker" in navigator;
 const settings = initSettingsPage(settingsPage, {
   reset: element("reset"),
@@ -324,6 +325,7 @@ function showTitle() {
 let libraryScroll = 0;
 function closeViewer() {
   openVersion++;
+  coach.stop();
   const closed = currentMap?.id;
   if (controls) pendingViewSave = controls.dispose();
   controls = undefined;
@@ -375,7 +377,8 @@ async function openMap(map: MapRecord) {
     viewer = new Viewer(
       element<HTMLCanvasElement>("map-canvas"),
       map,
-      () => {}, // No zoom readout: the map is the only thing on screen.
+      // No zoom readout: the map is the only thing on screen. The coach sees it move.
+      () => { if (state.view) coach.viewed(state.view); },
       (message) => {
         if (!reported) showError(t("Couldn’t show this map"), message);
         reported = true;
@@ -383,6 +386,7 @@ async function openMap(map: MapRecord) {
       controls.options(),
     );
     controls.attach(viewer);
+    coach.opened(!!map.example, state.markers.length > 0 || state.trail.length > 0);
     track("map_opened", { ok: true, example: !!map.example, megapixels: Math.round(map.width * map.height / 1e6),
       places: state.markers.length, routes: state.routes.length, ms: Date.now() - started });
     void prepareMapSearch(map, version);
@@ -732,22 +736,29 @@ progressDialog.addEventListener("cancel", (event) => {
   event.preventDefault();
   importing?.abort();
 });
-const tutorials = initTutorials(element("tour"), element("tour-offer"), {
-  ready: () => preparingExample !== undefined || maps.some((map) => map.example),
-  // Once it's made, unless the user went elsewhere meanwhile.
-  open: () => void (preparingExample ?? Promise.resolve()).then(() => {
-    const example = maps.find((map) => map.example);
-    if (example && !home.hidden && !currentMap) return openMap(example);
-  }),
+const coach = initCoach(viewerSection, element("welcome"), {
+  hasExample: () => preparingExample !== undefined || maps.some((map) => map.example),
+  practise: (lesson, from) => void practise(lesson, from),
+  importMap: () => {
+    if (currentMap) closeViewer();
+    showDialog(importDialog);
+  },
+  more: () => help.open(),
 });
 const whatsNew = initWhatsNew(element("whats-new"));
-element("tutorials-open").addEventListener("click", () => tutorials.openList());
-element("tour-help").addEventListener("click", () => help.open());
-// Each map panel’s header opens the tutorial for what it does.
-viewerSection.addEventListener("click", (event) => {
-  const id = (event.target as Element).closest<HTMLElement>("[data-tutorial]")?.dataset.tutorial;
-  if (id) tutorials.openGuide(id);
-});
+element("learn-open").addEventListener("click", () => help.open());
+// Lessons play on the example map, made again first if it was removed.
+async function practise(lesson: Lesson, from: string) {
+  if (!maps.some((map) => map.example)) {
+    if (importing && !preparingExample)
+      return showMessage(t("Finish the current task first"), t("Mega Maps is busy with a map. Let it finish, then try again."));
+    await (preparingExample ??= addExample(true).finally(() => (preparingExample = undefined)));
+  }
+  const example = maps.find((map) => map.example);
+  if (!example) return;
+  if (currentMap?.id !== example.id) await openMap(example);
+  if (currentMap?.id === example.id) coach.start(lesson, from);
+}
 for (const id of ["message-close", "message-dismiss"])
   element(id).addEventListener("click", () => messageDialog.close());
 function openUpdates() {
@@ -825,7 +836,7 @@ async function erase() {
   }
 }
 // Reset's Reset the app, once its three steps are confirmed: all data, then every setting.
-// The app starts again as if just installed, with Getting started and the example map.
+// The app starts again as if just installed, with the welcome and the example map.
 async function reset() {
   if (importing || ocrJob || updates.busy)
     return showMessage(t("Finish the current task first"), t("Mega Maps is busy with a map. Let it finish, then try again."));
@@ -1064,25 +1075,37 @@ async function start() {
   const map = maps.find((map) => map.id === resume);
   if (map) await openMap(map);
   retileMaps();
-  // Made while Getting started plays, which ends by opening it.
+  // Made while the welcome shows, so it's ready to try.
   if (!maps.length && preference("tour") !== "seen")
     preparingExample = addExample().finally(() => (preparingExample = undefined));
-  const touring = tutorials.atLaunch(maps.length > 0);
-  whatsNew.atLaunch(maps.length > 0, !touring);
+  const welcomed = coach.atLaunch(maps.length > 0);
+  whatsNew.atLaunch(maps.length > 0, !welcomed);
 }
-// New users get the example map to try things on, made while Getting started plays.
-async function addExample() {
+// New users get the example map to practise on, made quietly while the
+// welcome shows. Made again for a lesson, it shows its progress.
+async function addExample(shown = false) {
   const controller = new AbortController();
   importing = controller;
+  if (shown) {
+    element("progress-title").textContent = t("Preparing the example map");
+    element("progress-title-icon").innerHTML = icons.map;
+    element("progress-note").textContent = t("Keep Mega Maps open while your map is prepared.");
+    element("import-name").textContent = t("Val Moulin (example)");
+    showProgress(0, t("Reading image…"));
+    showDialog(progressDialog);
+  }
   try {
     const { addExampleMap } = await import("./example/example-map");
-    await mutate(() => addExampleMap(controller.signal));
+    await mutate(() => addExampleMap(controller.signal, shown ? (progress) => showProgress(progress.fraction * 100, progress.message) : undefined));
     track("example_map_added", { ok: true });
     channel?.postMessage("changed");
   } catch (error) {
-    track("example_map_added", { ok: false, error: failure(error) });
+    const stopped = error instanceof DOMException && error.name === "AbortError";
+    if (!stopped) track("example_map_added", { ok: false, error: failure(error) });
+    if (shown && !stopped) showError(t("Could not prepare the example map."), error);
   } finally {
     importing = undefined;
+    if (shown) progressDialog.close();
   }
   await refresh().catch(() => {});
 }

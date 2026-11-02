@@ -16,7 +16,7 @@ const SESSION_GAP = 30 * 60_000;
 const MAX_ERRORS = 10;
 
 type Value = string | number | boolean | Value[] | { [key: string]: Value };
-type Properties = Record<string, Value>;
+export type Properties = Record<string, Value>;
 interface StatEvent { event: string; uuid: string; timestamp: string; properties: Properties }
 
 interface UserAgentData {
@@ -158,7 +158,21 @@ export function failure(error: unknown) {
   return text.slice(0, 200);
 }
 
+const listeners = new Set<(event: string, properties: Properties) => void>();
+
+/** Hears what the person just did, sent or not, so the coach can follow along. */
+export function onEvent(listener: (event: string, properties: Properties) => void) {
+  listeners.add(listener);
+  return () => void listeners.delete(listener);
+}
+
+/** Something done on this device that isn't counted, only heard. */
+export function happened(event: string, properties: Properties = {}) {
+  for (const listener of listeners) listener(event, properties);
+}
+
 export function track(event: string, properties: Properties = {}) {
+  happened(event, properties);
   if (version === undefined) return;
   try {
     // Online is read now, not when sent, to tell use underground from use above it.
