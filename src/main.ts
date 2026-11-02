@@ -37,6 +37,7 @@ import { isShareFile } from "./sharing/format";
 import { initInstallPage, installMarkup, isInstalled } from "./ui/install-page";
 import { initTutorials, tutorialsMarkup } from "./ui/tutorials";
 import { initWhatsNew, whatsNewMarkup } from "./ui/whats-new";
+import { describeApp, helpDialogMarkup, initHelp } from "./ui/help";
 import { failure, setPerson, startStats, track } from "./stats";
 
 document.documentElement.lang = language;
@@ -50,7 +51,7 @@ app.innerHTML = `
   <section id="viewer" class="viewer" aria-label="${t("Map viewer")}" hidden>${viewerMarkup}</section>
   <input type="file" id="file-input" hidden>
   ${importDialogsMarkup}
-  <dialog id="message-dialog" aria-labelledby="message-title" aria-describedby="message-body">${dialogHeader("message-title", "", icons.sparkle, "message-dismiss")}<p id="message-body"></p><button class="primary" id="message-close">${icons.check}<span>${t("Got it")}</span></button></dialog>
+  <dialog id="message-dialog" aria-labelledby="message-title" aria-describedby="message-body">${dialogHeader("message-title", "", icons.sparkle, "message-dismiss")}<p id="message-body"></p><button class="primary" id="message-close">${icons.check}<span>${t("Got it")}</span></button><a class="quiet" id="message-report" target="_blank" rel="noopener" data-help="problem" hidden>${icons.bug}<span>${t("Report this problem")}</span></a></dialog>
   <dialog id="delete-dialog" aria-labelledby="delete-title">${dialogHeader("delete-title", t("Delete this map?"), icons.trash, "delete-cancel")}<p id="delete-name" class="delete-map"></p><p class="dialog-note" id="delete-note"></p><div class="dialog-actions"><button class="danger" id="delete-confirm">${icons.trash}<span>${t("Delete map")}</span></button></div></dialog>
   ${mapRenameMarkup}
   ${sharingMarkup}
@@ -59,6 +60,7 @@ app.innerHTML = `
   ${eraseDialogMarkup}
   ${tutorialsMarkup}
   ${whatsNewMarkup}
+  ${helpDialogMarkup}
   ${mapDialogsMarkup}
 `;
 const element = <T extends HTMLElement>(id: string) =>
@@ -95,6 +97,7 @@ if (released) {
   // A browser tab only shows how to install, and sends nothing.
   if (isInstalled()) startStats(releaseName ?? loadedVersion);
 }
+const help = initHelp(app, element<HTMLDialogElement>("help-dialog"), describeApp(releaseName ?? loadedVersion, isInstalled()));
 const canUpdate = import.meta.env.PROD && "serviceWorker" in navigator;
 const settings = initSettingsPage(settingsPage, {
   reset: element("reset"),
@@ -175,11 +178,17 @@ const openRenameMap = initMapRename(
     await refresh();
   },
 );
-function showMessage(title: string, message: string) {
+function showMessage(title: string, message: string, problem = false) {
   element("message-title").textContent = title;
   element("message-body").textContent = message;
+  const report = element<HTMLAnchorElement>("message-report");
+  report.hidden = !problem;
+  if (problem) help.report(report, { title, error: message });
   if (!messageDialog.open) showDialog(messageDialog);
 }
+// Something went wrong: say what, and offer to report it with the details filled in.
+const showError = (title: string, error: unknown) =>
+  showMessage(title, error instanceof Error ? error.message : String(error), true);
 // Ask before downloading; keep the current map/session and wait for durable saves before reloading.
 const updates = initUpdateDialog(element<HTMLDialogElement>("update-dialog"), {
   currentRelease: Number.isFinite(loadedRelease.getTime()) ? loadedRelease : undefined,
@@ -259,7 +268,7 @@ async function shareMap(map: MapRecord, item?: { kind: "marker" | "route"; id: s
     await controls?.prepareForUpdate();
     await sharing.openExport(map, await loadNavigation(map.id), item);
   } catch (error) {
-    showMessage(t("Could not prepare share"), error instanceof Error ? error.message : String(error));
+    showError(t("Could not prepare share"), error);
   }
 }
 // An origin-wide lock prevents launch cleanup from racing another tab's import.
@@ -323,7 +332,7 @@ function closeViewer() {
   currentMap = undefined;
   showTitle();
   void setLastMap(null).catch((error) =>
-    showMessage(t("Could not save home view"), String(error)),
+    showError(t("Could not save home view"), error),
   );
   viewerSection.hidden = true;
   home.hidden = false;
@@ -335,7 +344,7 @@ function closeViewer() {
       // The map just left now leads the list; the library opens at it.
       if (!home.hidden) window.scrollTo(0, maps[0]?.id === closed ? 0 : libraryScroll);
     })
-    .catch((error) => showMessage(t("Storage unavailable"), String(error)));
+    .catch((error) => showError(t("Storage unavailable"), error));
 }
 async function openMap(map: MapRecord) {
   const version = ++openVersion;
@@ -368,7 +377,7 @@ async function openMap(map: MapRecord) {
       map,
       () => {}, // No zoom readout: the map is the only thing on screen.
       (message) => {
-        if (!reported) showMessage(t("Couldn’t show this map"), message);
+        if (!reported) showError(t("Couldn’t show this map"), message);
         reported = true;
       },
       controls.options(),
@@ -382,7 +391,7 @@ async function openMap(map: MapRecord) {
     if (version === openVersion) {
       track("map_opened", { ok: false, error: failure(error) });
       closeViewer();
-      showMessage(t("Could not open map"), String(error));
+      showError(t("Could not open map"), error);
     }
   }
 }
@@ -609,7 +618,7 @@ async function importFile(file: File) {
   if (importing) return;
   if (await isShareFile(file).catch(() => false)) void sharing.openImport(file);
   else if (await isBackupFile(file).catch(() => false))
-    void settings.review(file).catch((error) => showMessage(t("Couldn’t read this backup"), String(error instanceof Error ? error.message : error)));
+    void settings.review(file).catch((error) => showError(t("Couldn’t read this backup"), error));
   else importImage(file);
 }
 // Desktop: a map or .megamap file dropped on the library imports like Import.
@@ -683,10 +692,7 @@ function importImage(file: File) {
     .catch((error) => {
       if (error instanceof DOMException && error.name === "AbortError") return;
       track("map_imported", { ok: false, ...kind, error: failure(error) });
-      showMessage(
-        t("Couldn’t import this map"),
-        error instanceof Error ? error.message : String(error),
-      );
+      showError(t("Couldn’t import this map"), error);
     })
     .finally(() => {
       progressDialog.close();
@@ -714,6 +720,7 @@ progressDialog.addEventListener("cancel", (event) => {
 const tutorials = initTutorials(element("tour"), element("tour-offer"));
 const whatsNew = initWhatsNew(element("whats-new"));
 element("tutorials-open").addEventListener("click", () => tutorials.openList());
+element("tour-help").addEventListener("click", () => help.open());
 // Each map panel’s header opens the tutorial for what it does.
 viewerSection.addEventListener("click", (event) => {
   const id = (event.target as Element).closest<HTMLElement>("[data-tutorial]")?.dataset.tutorial;
@@ -769,7 +776,7 @@ async function restore(backup: Backup) {
   } catch (error) {
     if (!(error instanceof DOMException && error.name === "AbortError")) {
       track("backup_restored", { ok: false, error: failure(error) });
-      showMessage(t("Couldn’t restore the backup"), error instanceof Error ? error.message : String(error));
+      showError(t("Couldn’t restore the backup"), error);
     }
   } finally {
     progressDialog.close();
@@ -788,7 +795,7 @@ async function erase() {
     await mutate(deleteAllData);
     showMessage(t("Everything deleted"), t("No maps, places or photos are left on this device."));
   } catch (error) {
-    showMessage(t("Couldn’t delete everything"), error instanceof Error ? error.message : String(error));
+    showError(t("Couldn’t delete everything"), error);
   } finally {
     channel?.postMessage("changed");
     await refresh().catch(() => {});
@@ -806,7 +813,7 @@ async function reset() {
     channel?.postMessage("changed");
     location.reload();
   } catch (error) {
-    showMessage(t("Couldn’t reset the app"), error instanceof Error ? error.message : String(error));
+    showError(t("Couldn’t reset the app"), error);
     await refresh().catch(() => {});
     void settings.refresh();
   }
@@ -832,17 +839,17 @@ element("delete-confirm").addEventListener("click", () => {
       }),
     )
     .then(() => refresh())
-    .catch((error) => showMessage(t("Couldn’t delete map"), String(error)));
+    .catch((error) => showError(t("Couldn’t delete map"), error));
 });
 element("back").addEventListener("click", closeViewer);
 channel?.addEventListener("message", (event: MessageEvent<unknown>) => {
   const data = event.data;
   if (typeof data === "object" && data !== null && "type" in data && data.type === "annotations" &&
       "mapId" in data && data.mapId === currentMap?.id)
-    void controls?.refreshImports().catch((error) => showMessage(t("Could not refresh shared items"), String(error)));
+    void controls?.refreshImports().catch((error) => showError(t("Could not refresh shared items"), error));
   if (!importing)
     void refresh().catch((error) =>
-      showMessage(t("Storage unavailable"), String(error)),
+      showError(t("Storage unavailable"), error),
     );
 });
 
@@ -951,7 +958,7 @@ ocrOfferDialog.addEventListener("close", () => {
   if (offerAccepted)
     void runOcr(map, new AbortController()).catch((error) => {
       if (!ocrErrors.has(map.id))
-        showMessage(t("Couldn’t start text detection"), String(error));
+        showError(t("Couldn’t start text detection"), error);
     });
 });
 
@@ -1004,7 +1011,7 @@ element("rerun-ocr").addEventListener("click", () => {
   void runOcr(map, new AbortController())
     .catch((error) => {
       if (!ocrErrors.has(map.id))
-        showMessage(t("Couldn’t start text detection"), String(error));
+        showError(t("Couldn’t start text detection"), error);
     })
     .finally(() => void renderOcrSettings());
 });
@@ -1064,10 +1071,7 @@ async function restoreDevData() {
       await restore(await loadDevBackup(backup.name));
 }
 void start().catch((error) =>
-  showMessage(
-    t("Local storage unavailable"),
-    error instanceof Error ? error.message : String(error),
-  ),
+  showError(t("Local storage unavailable"), error),
 );
 Object.defineProperty(window, "MapViewer", {
   value: {
