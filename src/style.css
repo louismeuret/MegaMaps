@@ -1634,20 +1634,41 @@ dialog#whats-new[open] {
 #whats-new > .whats-new-idea + .dialog-actions {
   margin-top: var(--space-12);
 }
-#whats-new-sections {
+.whats-new-body {
+  position: relative;
+  display: flex;
   flex: 1;
   min-height: 0;
+}
+/* The lists scroll behind a drawn indicator that stays visible while there
+   is more to read; the native one fades out on phones. */
+#whats-new-sections {
+  flex: 1;
+  padding-right: var(--space-16);
   overflow-y: auto;
   overscroll-behavior: contain;
-  scrollbar-width: thin;
-  scrollbar-color: var(--muted) transparent;
+  scrollbar-width: none;
 }
 #whats-new-sections::-webkit-scrollbar {
-  width: 6px;
+  display: none;
 }
-#whats-new-sections::-webkit-scrollbar-thumb {
+.whats-new-scroll {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 4px;
+  border-radius: var(--radius-pill);
+  background: var(--line);
+  pointer-events: none;
+}
+.whats-new-scroll[hidden] {
+  display: none;
+}
+.whats-new-scroll span {
+  display: block;
+  border-radius: var(--radius-pill);
   background: var(--muted);
-  border-radius: var(--radius-md);
 }
 #whats-new article + article {
   margin-top: var(--space-24);

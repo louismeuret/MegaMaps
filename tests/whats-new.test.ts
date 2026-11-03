@@ -71,3 +71,26 @@ test("Settings shows every release under its date and leaves the launch's marker
   ]);
   assert.equal(localStorage.getItem("megamaps:changelog-seen"), "bbb");
 });
+
+test("a drawn scroll indicator shows while there is more to read and follows the scroll", () => {
+  const { dialog, whatsNew } = setup();
+  const body = dialog.querySelector<HTMLElement>("#whats-new-sections")!;
+  const scroll = dialog.querySelector<HTMLElement>(".whats-new-scroll")!;
+  // Linkedom has no layout.
+  let scrollHeight = 400;
+  Object.defineProperty(body, "clientHeight", { value: 400 });
+  Object.defineProperty(body, "scrollHeight", { get: () => scrollHeight });
+  Object.defineProperty(scroll, "clientHeight", { value: 400 });
+
+  whatsNew.openAll();
+  assert.ok(scroll.hidden, "everything fits");
+
+  scrollHeight = 1600;
+  whatsNew.openAll();
+  assert.ok(!scroll.hidden);
+  const thumb = scroll.querySelector("span")!;
+  assert.equal(thumb.style.height, "100px");
+  body.scrollTop = 1200;
+  body.dispatchEvent(new dialog.ownerDocument.defaultView!.Event("scroll"));
+  assert.equal(thumb.style.transform, "translateY(300px)");
+});
