@@ -84,27 +84,27 @@ export async function buildParents(
         if (canvas.height !== height) canvas.height = height;
         const ctx = canvas.getContext("2d")!;
         ctx.clearRect(0, 0, width, height);
-        for (let dy = 0; dy < 2; dy++)
-          for (let dx = 0; dx < 2; dx++) {
-            const cx = x * 2 + dx,
-              cy = y * 2 + dy;
-            if (cx >= childLevel.cols || cy >= childLevel.rows) continue;
-            const bitmap = await createImageBitmap(
-              await store.get(id, tileKey(index - 1, cx, cy)),
+        // The four children are read and decoded together, then drawn.
+        const children = [[0, 0], [1, 0], [0, 1], [1, 1]]
+          .filter(([dx, dy]) => x * 2 + dx! < childLevel.cols && y * 2 + dy! < childLevel.rows);
+        const decoded = await Promise.allSettled(children.map(async ([dx, dy]) =>
+          createImageBitmap(await store.get(id, tileKey(index - 1, x * 2 + dx!, y * 2 + dy!)))));
+        try {
+          for (const [i, result] of decoded.entries()) {
+            if (result.status === "rejected") throw result.reason;
+            const [dx, dy] = children[i]!, bitmap = result.value;
+            // Whole pixels: a half-covered edge pixel would turn half transparent.
+            ctx.drawImage(
+              bitmap,
+              (dx! * TILE_SIZE) / 2,
+              (dy! * TILE_SIZE) / 2,
+              Math.ceil(bitmap.width / 2),
+              Math.ceil(bitmap.height / 2),
             );
-            try {
-              // Whole pixels: a half-covered edge pixel would turn half transparent.
-              ctx.drawImage(
-                bitmap,
-                (dx * TILE_SIZE) / 2,
-                (dy * TILE_SIZE) / 2,
-                Math.ceil(bitmap.width / 2),
-                Math.ceil(bitmap.height / 2),
-              );
-            } finally {
-              bitmap.close();
-            }
           }
+        } finally {
+          for (const result of decoded) if (result.status === "fulfilled") result.value.close();
+        }
         await tiles.write(canvas, tileKey(index, x, y));
       }
     // The next level is drawn from this one's saved tiles.
