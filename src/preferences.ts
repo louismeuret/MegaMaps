@@ -20,8 +20,6 @@ const choices = {
   debug: ["off", "on"],
   /** Whether this device was welcomed on its first launch. */
   tour: ["new", "seen"],
-  /** Whether the tip to hold the map was shown, or the map was held. */
-  "hold-tip": ["new", "seen"],
   /** Whether removing the example map was offered, once there was a map of one's own. */
   "example-offer": ["new", "seen"],
 } as const;

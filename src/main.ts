@@ -36,9 +36,9 @@ import { preference, resetPreferences, setPreference } from "./preferences";
 import { importAnnotations, importNewCopy } from "./sharing/storage";
 import { isShareFile } from "./sharing/format";
 import { initInstallPage, installMarkup, isInstalled } from "./ui/install-page";
-import { coachMarkup, initCoach, welcomeMarkup, type Lesson } from "./ui/coach";
+import { initWelcome, welcomeMarkup } from "./ui/welcome";
 import { initWhatsNew, whatsNewMarkup } from "./ui/whats-new";
-import { describeApp, helpDialogMarkup, initHelp } from "./ui/help";
+import { describeApp, initHelp } from "./ui/help";
 import { failure, setPerson, startStats, track } from "./stats";
 
 document.documentElement.lang = language;
@@ -49,7 +49,7 @@ app.innerHTML = `
   ${settingsMarkup}
   ${resetMarkup}
   ${installMarkup}
-  <section id="viewer" class="viewer" aria-label="${t("Map viewer")}" hidden>${viewerMarkup}${coachMarkup}</section>
+  <section id="viewer" class="viewer" aria-label="${t("Map viewer")}" hidden>${viewerMarkup}</section>
   <input type="file" id="file-input" hidden>
   ${importDialogsMarkup}
   <dialog id="message-dialog" aria-labelledby="message-title" aria-describedby="message-body">${dialogHeader("message-title", "", icons.sparkle, "message-dismiss")}<p id="message-body"></p><button class="primary" id="message-close">${icons.check}<span>${t("Got it")}</span></button><a class="quiet" id="message-report" target="_blank" rel="noopener" data-help="problem" hidden>${icons.bug}<span>${t("Report this problem")}</span></a></dialog>
@@ -61,7 +61,6 @@ app.innerHTML = `
   ${eraseDialogMarkup}
   ${welcomeMarkup}
   ${whatsNewMarkup}
-  ${helpDialogMarkup}
   ${mapDialogsMarkup}
 `;
 const element = <T extends HTMLElement>(id: string) =>
@@ -100,8 +99,7 @@ if (released) {
   // A browser tab only shows how to install, and sends nothing.
   if (isInstalled()) startStats(releaseName ?? loadedVersion);
 }
-const help = initHelp(app, element<HTMLDialogElement>("help-dialog"), describeApp(releaseName ?? loadedVersion, isInstalled()),
-  (lesson) => void practise(lesson, "help"));
+const help = initHelp(app, describeApp(releaseName ?? loadedVersion, isInstalled()));
 const canUpdate = import.meta.env.PROD && "serviceWorker" in navigator;
 const settings = initSettingsPage(settingsPage, {
   reset: element("reset"),
@@ -324,7 +322,6 @@ function showTitle() {
 let libraryScroll = 0;
 function closeViewer() {
   openVersion++;
-  coach.stop();
   const closed = currentMap?.id;
   if (controls) pendingViewSave = controls.dispose();
   controls = undefined;
@@ -376,8 +373,8 @@ async function openMap(map: MapRecord) {
     viewer = new Viewer(
       element<HTMLCanvasElement>("map-canvas"),
       map,
-      // No zoom readout: the map is the only thing on screen. The coach sees it move.
-      () => { if (state.view) coach.viewed(state.view); },
+      // No zoom readout: the map is the only thing on screen.
+      () => {},
       (message) => {
         if (!reported) showError(t("Couldn’t show this map"), message);
         reported = true;
@@ -385,7 +382,6 @@ async function openMap(map: MapRecord) {
       controls.options(),
     );
     controls.attach(viewer);
-    coach.opened(!!map.example, state.markers.length > 0 || state.trail.length > 0);
     track("map_opened", { ok: true, example: !!map.example, megapixels: Math.round(map.width * map.height / 1e6),
       places: state.markers.length, routes: state.routes.length, ms: Date.now() - started });
     void prepareMapSearch(map, version);
@@ -748,19 +744,14 @@ progressDialog.addEventListener("cancel", (event) => {
   event.preventDefault();
   importing?.abort();
 });
-const coach = initCoach(viewerSection, element("welcome"), {
+const welcome = initWelcome(element("welcome"), {
   hasExample: () => preparingExample !== undefined || maps.some((map) => map.example),
-  practise: (lesson, from) => void practise(lesson, from),
-  importMap: () => {
-    if (currentMap) closeViewer();
-    showDialog(importDialog);
-  },
-  more: () => help.open(),
+  importMap: () => showDialog(importDialog),
+  openExample: () => void openExample(),
 });
 const whatsNew = initWhatsNew(element("whats-new"));
-element("learn-open").addEventListener("click", () => help.open());
-// Lessons play on the example map, made again first if it was removed.
-async function practise(lesson: Lesson, from: string) {
+// The example map, made again first if it went meanwhile.
+async function openExample() {
   if (!maps.some((map) => map.example)) {
     if (importing && !preparingExample)
       return showMessage(t("Finish the current task first"), t("Mega Maps is busy with a map. Let it finish, then try again."));
@@ -769,7 +760,6 @@ async function practise(lesson: Lesson, from: string) {
   const example = maps.find((map) => map.example);
   if (!example) return;
   if (currentMap?.id !== example.id) await openMap(example);
-  if (currentMap?.id === example.id) coach.start(lesson, from);
 }
 for (const id of ["message-close", "message-dismiss"])
   element(id).addEventListener("click", () => messageDialog.close());
@@ -1104,11 +1094,11 @@ async function start() {
   // Made while the welcome shows, so it's ready to try.
   if (!maps.length && preference("tour") !== "seen")
     preparingExample = addExample().finally(() => (preparingExample = undefined));
-  const welcomed = coach.atLaunch(maps.length > 0);
+  const welcomed = welcome.atLaunch(maps.length > 0);
   whatsNew.atLaunch(maps.length > 0, !welcomed);
 }
-// New users get the example map to practise on, made quietly while the
-// welcome shows. Made again for a lesson, it shows its progress.
+// New users get the example map to try, made quietly while the welcome
+// shows. Made again when opened from the welcome, it shows its progress.
 async function addExample(shown = false) {
   const controller = new AbortController();
   importing = controller;

@@ -5,7 +5,7 @@ import type { Point } from "../viewer/camera";
 // bring, room-and-pillar sectors on paper with named galleries, a haulage way,
 // wells, water, a collapse and the surveyor's labels. It's generated, always
 // the same, and drawn as a paper scan; the app darkens it like any other map.
-// New users get it as a map to practise on, with the coach.
+// New users get it as a map to try things on.
 
 export const PLAN_WIDTH = 1200;
 export const PLAN_HEIGHT = 1400;
