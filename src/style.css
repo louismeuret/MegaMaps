@@ -128,6 +128,35 @@ svg {
 .top-edge {
   display: none;
 }
+/* Pages: the library rises in, Settings slides in from the side, and the map
+   fades up from black. Only their content moves: a moving page would carry
+   its fixed top edge with it, and the map measures its canvas on open. */
+.home > :not(.top-edge, dialog) {
+  animation: rise-in 0.3s var(--ease-out);
+}
+.settings-page > :not(.top-edge, dialog) {
+  animation: page-push 0.3s var(--ease-out);
+}
+.viewer {
+  animation: fade-in 0.3s var(--ease-out);
+}
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+}
+@keyframes page-push {
+  from {
+    opacity: 0;
+    transform: translateX(32px);
+  }
+}
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
 @media (display-mode: standalone) {
   /* Keep scrolled library content out of the iPhone's translucent top edge.
      iOS 26 finds this solid bar by hit-testing, so it must take taps
@@ -2145,6 +2174,8 @@ button.glass:active:not(:disabled) {
   justify-content: space-between;
   padding: var(--space-4);
   border-radius: var(--radius-lg);
+  /* Back in the panel's place once it closes, the way the panel came. */
+  animation: sheet-in 0.24s var(--ease-out);
 }
 .dock > button {
   flex: none;
@@ -2161,6 +2192,7 @@ button.glass:active:not(:disabled) {
   font-weight: 650;
   letter-spacing: 0.01em;
   transition:
+    transform 0.08s,
     background-color 0.15s,
     box-shadow 0.15s;
 }
@@ -2529,6 +2561,7 @@ button.glass:active:not(:disabled) {
 }
 .mark-actions {
   margin-top: var(--space-16);
+  animation: rise-in 0.2s var(--ease-out);
 }
 .marker-form > .dialog-actions:not(:has(> :not([hidden]))) {
   display: none;
@@ -3864,6 +3897,19 @@ label.panel-row {
 @starting-style {
   .selected .pin-body {
     transform: none;
+  }
+}
+/* A place just added drops onto its spot. `scale` adds to the selected pin's
+   transform rather than replacing it. */
+.pin-body.added {
+  animation: pin-drop 0.4s var(--ease-out);
+}
+@keyframes pin-drop {
+  from {
+    scale: 0;
+  }
+  60% {
+    scale: 1.2;
   }
 }
 @keyframes lifted {
