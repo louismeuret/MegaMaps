@@ -47,7 +47,7 @@ import {
   type OcrIndex,
 } from "../ocr/index";
 import { matchPoints, searchMap, type MapSearchMatch } from "../viewer/map-search";
-import { happened, track } from "../stats";
+import { track } from "../stats";
 import { formatDistance, formatMinutes, formatWalk, pathLength, travelSummary } from "../viewer/measure";
 const sheets = ["trail", "display", "rotation", "saved", "add"] as const;
 /** The place card's Delete and the trail mark's, each armed by a first tap. */
@@ -327,7 +327,6 @@ export class ViewerControls {
           end: (at) => {
             wheel.hidden = true;
             const choice = at && choiceAt(at);
-            if (choice) happened("map_held", { choice });
             if (choice === "place") this.openMarker(t("New place"), point);
             else if (choice === "back") this.backToMark();
             else if (choice === "trail") this.markTrail(point);
@@ -393,7 +392,6 @@ export class ViewerControls {
     this.dialog("mark-dialog").close();
     this.state.trail.push(mark);
     this.changed();
-    happened("trail_marked");
     // With trip_ended, tells trips left running from Trail opened only to look.
     if (this.state.trail.length === 1) track("trip_started");
     this.toast(this.state.trail.length > 1 ? t("Trail point added") : t("Trip started"), "done", () => {
@@ -413,7 +411,6 @@ export class ViewerControls {
     if (!last) return;
     if (last.view && this.viewer?.showView) this.viewer.showView(last.view);
     else this.viewer?.jumpTo(last);
-    happened("back_to_mark");
   }
   /** The red dot, read first: when it was marked. Edit offers Move and Delete. */
   private showMark() {
@@ -2441,7 +2438,6 @@ export class ViewerControls {
       this.searchPosition = -1;
       this.viewer?.setSearch?.(this.searchMatches,
         !!normalizeText(this.searchQuery) && (!!this.ocr || !!this.searchMatches.length));
-      if (this.searchMatches.length) happened("search_found", { pair: this.searchQuery.includes(";") });
     }
     const active = !!normalizeText(this.searchQuery);
     const count = this.searchMatches.length;
