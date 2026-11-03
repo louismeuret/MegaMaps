@@ -3,6 +3,7 @@ import type { CalloutBounds, CalloutLayout } from "./callout-layout";
 import { PIN_CASING, PLACE_PIN, waterColors } from "../ui/place-icon";
 import { icons, markerCalloutIcon } from "../ui/icons";
 import { placeColor, type MapMarker } from "./navigation";
+import { reducedMotion } from "../ui/motion";
 
 const NS = "http://www.w3.org/2000/svg";
 /** The spring between pin (0) and open balloon (1): it opens in about a third
@@ -179,7 +180,7 @@ export class MapBalloon {
       this.open += this.speed * step;
     }
     this.drawn = now;
-    if (Math.abs(target - this.open) < 0.002 && Math.abs(this.speed) < 0.02) {
+    if (reducedMotion() || Math.abs(target - this.open) < 0.002 && Math.abs(this.speed) < 0.02) {
       this.open = target;
       this.speed = 0;
     }

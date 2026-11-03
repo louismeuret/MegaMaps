@@ -66,15 +66,15 @@ const dangerPicks = dangerSteps
 //                   with the same header (icon, title, X) and full-size actions
 // Pinch and drag move the map, so there are no zoom or pan buttons.
 export const viewerMarkup = `
-<div class="map-stage" id="map-stage"><canvas id="map-canvas" role="img" aria-label="${t("Map: drag to pan; pinch or double-tap and drag to zoom, two-finger tap to zoom out; long-press, then drag up-left to add a place, up-right to go back to your last mark, or down to mark where you are.")}"></canvas><div class="map-shade" aria-hidden="true"></div><svg id="search-overlay" class="search-overlay" aria-hidden="true" hidden></svg><svg id="map-overlay" class="map-overlay" aria-hidden="true"></svg><div id="hold-wheel" class="hold-wheel" aria-hidden="true" hidden>${holdArcs}<span class="hold-place">${icons.pin}</span><span class="hold-back">${icons.here}</span><span class="hold-trail">${icons.trail}</span><strong id="hold-label" class="hold-label"></strong></div></div>
+<div class="map-stage" id="map-stage"><canvas id="map-canvas" role="img" aria-label="${t("Map: drag to pan; pinch or double-tap and drag to zoom, two-finger tap to zoom out; long-press, then drag up-left to add a place, up-right to go back to your last mark, or down to mark where you are.")}"></canvas><div class="map-shade" aria-hidden="true"></div><svg id="search-overlay" class="search-overlay" aria-hidden="true" hidden></svg><svg id="map-overlay" class="map-overlay" aria-hidden="true"></svg><div id="hold-wheel" class="hold-wheel motion" aria-hidden="true" hidden>${holdArcs}<span class="hold-place">${icons.pin}</span><span class="hold-back">${icons.here}</span><span class="hold-trail">${icons.trail}</span><strong id="hold-label" class="hold-label"></strong></div></div>
 <button class="glass corner-button corner-left" id="back" aria-label="${t("Back to library")}" title="${t("Back to library")}">${icons.arrow}</button>
 <div id="display-chips" class="display-chips" role="group" aria-label="${t("Map view controls")}">
   <button id="open-rotation" class="glass status-chip open-rotation" data-sheet="rotation" aria-label="${t("Rotation")}" title="${t("Rotation")}" aria-controls="sheet" aria-expanded="false">${icons.rotationLock}</button>
   <button id="open-display" class="glass status-chip open-display" data-sheet="display" aria-label="${t("View settings")}" title="${t("View settings")}" aria-controls="sheet" aria-expanded="false">${icons.sun}</button>
 </div>
-<div class="toasts"><div id="ocr-progress" class="toast glass" data-tone="progress" role="progressbar" aria-label="${t("Finding text")}" aria-valuemin="0" aria-valuemax="100" hidden>${icons.scanText}<p>${t("Finding text")}</p><span id="ocr-percent" class="ocr-percent">0%</span></div><div id="toast-bar" class="toast glass" hidden><span id="toast-icon" class="toast-icon" aria-hidden="true"></span><p id="toast" role="status" aria-live="polite" hidden></p><button id="toast-undo" class="toast-undo" hidden>${icons.undo}<span>${t("Undo")}</span></button></div></div>
-<div id="search-field" class="glass search-field" hidden>${icons.search}<input id="map-search" class="map-search" type="search" aria-label="${t("Search map text and saved places")}" aria-describedby="search-status" aria-controls="search-overlay" aria-expanded="false" placeholder="${t("Search map…")}" autocomplete="off" autocapitalize="off" enterkeyhint="search"><button type="button" id="search-count" class="search-count" title="${t("Next match")}" hidden></button><button type="button" id="search-close" class="search-close" aria-label="${t("Close search")}" title="${t("Close")}">${icons.close}</button></div>
-<nav class="dock glass" id="dock" aria-label="${t("Map menu")}">
+<div class="toasts"><div id="ocr-progress" class="toast glass motion" data-tone="progress" role="progressbar" aria-label="${t("Finding text")}" aria-valuemin="0" aria-valuemax="100" hidden>${icons.scanText}<p>${t("Finding text")}</p><span id="ocr-percent" class="ocr-percent">0%</span></div><div id="toast-bar" class="toast glass motion" hidden><span id="toast-icon" class="toast-icon" aria-hidden="true"></span><p id="toast" role="status" aria-live="polite" hidden></p><button id="toast-undo" class="toast-undo" hidden>${icons.undo}<span>${t("Undo")}</span></button></div></div>
+<div id="search-field" class="glass search-field motion" hidden>${icons.search}<input id="map-search" class="map-search" type="search" aria-label="${t("Search map text and saved places")}" aria-describedby="search-status" aria-controls="search-overlay" aria-expanded="false" placeholder="${t("Search map…")}" autocomplete="off" autocapitalize="off" enterkeyhint="search"><button type="button" id="search-count" class="search-count" title="${t("Next match")}" hidden></button><button type="button" id="search-close" class="search-close" aria-label="${t("Close search")}" title="${t("Close")}">${icons.close}</button></div>
+<nav class="dock glass motion" id="dock" aria-label="${t("Map menu")}">
   <button id="open-saved" class="open-saved" data-sheet="saved" aria-label="${t("Saved")}" title="${t("Saved")}" aria-controls="sheet" aria-expanded="false">${icons.saved}</button>
   <button id="open-search" class="open-search" aria-label="${t("Search")}" title="${t("Search")}" aria-controls="search-field" aria-expanded="false">${icons.search}</button>
   <button id="open-trail" class="open-trail" data-sheet="trail" aria-label="${t("Trail")}" title="${t("Trail")}" aria-controls="sheet" aria-expanded="false">${icons.trail}<span id="trip-clock" class="trip-clock" hidden></span></button>
@@ -82,7 +82,7 @@ export const viewerMarkup = `
   <button id="open-add" class="open-add" aria-label="${t("Add")}" title="${t("Add")}" data-sheet="add" aria-controls="sheet" aria-expanded="false">${icons.add}</button>
 </nav>
 <p id="search-status" class="search-status" role="status" aria-live="polite"></p>
-<section id="tool-bar" class="tool-bar" aria-labelledby="tool-title" hidden>
+<section id="tool-bar" class="tool-bar motion" aria-labelledby="tool-title" hidden>
   <div class="sheet-header"><span id="tool-icon" class="dialog-title-icon" aria-hidden="true"></span><h2 id="tool-title"></h2><button type="button" id="tool-rename" class="dialog-edit" aria-label="${t("Rename route")}" title="${t("Rename route")}" hidden>${icons.edit}</button><button type="button" id="tool-cancel" class="dialog-close" aria-label="${t("Cancel")}" title="${t("Cancel")}">${icons.close}</button></div>
   <p id="tool-total" class="tool-total" hidden><span id="tool-distance"></span><span id="tool-time"></span></p>
   <p id="tool-message" class="tool-hint" role="status"></p>
@@ -91,8 +91,8 @@ export const viewerMarkup = `
     <button type="button" id="tool-done" class="primary">${icons.check}<span>${t("Done")}</span></button>
   </div>
 </section>
-<button id="sheet-dismiss" class="sheet-dismiss" aria-label="${t("Close")}" hidden></button>
-<section id="sheet" class="sheet" aria-labelledby="sheet-title" hidden>
+<button id="sheet-dismiss" class="sheet-dismiss motion" aria-label="${t("Close")}" hidden></button>
+<section id="sheet" class="sheet motion" aria-labelledby="sheet-title" hidden>
   <div class="sheet-header"><span id="sheet-title-icon" class="dialog-title-icon" aria-hidden="true"></span><h2 id="sheet-title"></h2><button id="share-saved" class="sheet-share" aria-label="${t("Share map or selected items")}" hidden>${icons.share}</button><button id="reset-rotation" class="sheet-reset" aria-label="${t("Reset rotation to 0°")}" title="${t("Reset rotation to 0°")}" hidden>${icons.undo}</button><button id="close-sheet" class="sheet-close" aria-label="${t("Close")}">${icons.close}</button></div>
   <div class="sheet-content">
     <div id="sheet-display" data-panel="display" data-title="${t("View")}" hidden>
@@ -176,7 +176,7 @@ export const viewerMarkup = `
 </dialog>
 <dialog id="mark-dialog" class="place-card trip-card" data-mode="view" aria-labelledby="mark-title">
   <div class="dialog-header"><span class="dialog-title-icon" aria-hidden="true">${icons.trail}</span><div class="place-heading"><h2 id="mark-title">${t("Last mark")}</h2><p id="mark-time" class="place-updated"></p></div><button type="button" id="mark-edit" class="dialog-edit" aria-label="${t("Edit mark")}" title="${t("Edit mark")}">${icons.edit}</button><button type="button" id="mark-close" class="dialog-close" aria-label="${t("Close")}" title="${t("Close")}">${icons.close}</button></div>
-  <div id="mark-actions" class="dialog-actions mark-actions" hidden><button type="button" id="mark-delete" class="quiet danger">${icons.trash}<span>${t("Delete")}</span></button><button type="button" id="mark-move" class="quiet">${icons.move}<span>${t("Move")}</span></button></div>
+  <div id="mark-actions" class="dialog-actions mark-actions motion" hidden><button type="button" id="mark-delete" class="quiet danger">${icons.trash}<span>${t("Delete")}</span></button><button type="button" id="mark-move" class="quiet">${icons.move}<span>${t("Move")}</span></button></div>
 </dialog>
 <dialog id="kind-dialog" class="kind-dialog" aria-labelledby="kind-title">${dialogHeader("kind-title", t("Icon and type"), icons.pin, "kind-close")}<div class="kind-picker" role="radiogroup" aria-labelledby="kind-title">${kindPicks}</div></dialog>
 <dialog id="photo-viewer" class="photo-viewer" aria-label="${t("Photos")}"><div class="photo-viewer-stage"><div class="photo-viewer-track"></div></div><button type="button" id="photo-viewer-close" class="dialog-close" aria-label="${t("Close")}" title="${t("Close")}">${icons.close}</button></dialog>

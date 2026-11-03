@@ -17,6 +17,12 @@
 - Scrolling must follow the user's movement smoothly, without jumps or teleporting.
 - Clicking a place opens readable details first; editing requires an explicit Edit action.
 
+## Motion
+
+- Use the `--motion-*` tokens in `src/style.css` (mirrored in `src/ui/motion.ts`), never raw durations: press 80ms, state changes 150ms, arriving 250ms, emphasis 400ms, one blink 1s.
+- Things arrive with `--ease-out` from where they live (set `--enter-from`) and leave the way they came in 150ms with `--ease-in`. Something over the map that comes and goes takes the `motion` class, and `hidden` plays both; something removed from the page leaves with `leave()`.
+- Nothing runs longer than 400ms except map glides and status loops. Everything honours reduced motion.
+
 ## Releases
 
 The app shows `src/changelog.ts` once after an update: everything new since the device's last release, as new features, then changes, then bug fixes.

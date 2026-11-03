@@ -41,6 +41,7 @@ import { placeIcon } from "./place-icon";
 import { wheelChoice, type WheelChoice } from "./hold-wheel";
 import { showActionSheet } from "./action-sheet";
 import { popoverPosition } from "./popover-position";
+import { leave } from "./motion";
 import {
   normalizeText,
   ocrLabelAt,
@@ -1403,7 +1404,9 @@ export class ViewerControls {
     this.on(window, "resize", () => this.closeRowMenu());
     if (window.visualViewport)
       this.on(window.visualViewport, "resize", () => this.closeRowMenu());
-    this.on(this.el("sheet"), "animationend", () => {
+    // Once the panel has risen into place, menus and labels go where it ended up.
+    this.on(this.el("sheet"), "transitionend", (event) => {
+      if (event.target !== event.currentTarget || (event as TransitionEvent).propertyName !== "transform") return;
       this.positionRowMenu();
       this.viewer?.refreshLabels?.();
     });
@@ -2033,7 +2036,7 @@ export class ViewerControls {
     const anchor = this.el(id);
     const menu = document.createElement("div");
     menu.id = "saved-section-menu";
-    menu.className = "row-popover";
+    menu.className = "row-popover motion";
     menu.dataset.width = "256";
     menu.setAttribute("role", "menu");
     menu.setAttribute("aria-label", anchor.getAttribute("aria-label")!);
@@ -2100,7 +2103,7 @@ export class ViewerControls {
   private closeRowMenu() {
     if (!this.rowMenu && !this.rowPopover) return;
     const anchor = this.rowMenuAnchor, sheet = this.rowSheet;
-    this.rowPopover?.remove();
+    if (this.rowPopover) leave(this.rowPopover);
     this.rowSheet = undefined;
     sheet?.close();
     anchor?.setAttribute("aria-expanded", "false");
@@ -2219,7 +2222,7 @@ export class ViewerControls {
         this.el(`layer-${layer}-count`).textContent = String(counts[layer]);
     }
     // Fine rotation only appears once twisting is unlocked.
-    this.rowPopover?.remove();
+    if (this.rowPopover) leave(this.rowPopover);
     this.rowPopover = undefined;
     this.rowMenuAnchor = undefined;
     const markers = this.el("marker-list"),
