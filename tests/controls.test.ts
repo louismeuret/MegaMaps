@@ -181,12 +181,13 @@ test("viewer controls: menu pill, panels, smart dark, layers, highlight, rotatio
     assert.equal(toolBar.hidden, true);
     assert.equal(root.dataset.tool, "browse");
 
-    // Search occupies the space between Saved and Add.
+    // The pill holds every map tool, with the solid Saved and Add at its ends.
     assert.deepEqual(
       [...dock.children].map((element) => element.id),
-      ["open-saved", "open-search", "open-add"],
+      ["open-saved", "open-search", "open-trail", "open-measure", "open-add"],
     );
-    assert.equal(el("map-search").parentElement, el("open-search"));
+    assert.equal(el("search-field").hidden, true, "the search bar waits for its button");
+    assert.equal(el("map-search").parentElement, el("search-field"));
     // Rows are built only once their panel opens.
     assert.equal(el("marker-list").childElementCount + el("route-list").childElementCount, 0);
     const refreshesBeforeOpening = labelRefreshes;
@@ -875,12 +876,12 @@ test("viewer controls: menu pill, panels, smart dark, layers, highlight, rotatio
     t.mock.timers.enable({ apis: ["setTimeout"] });
     el("open-search").dispatchEvent(new window.Event("click", { bubbles: true }));
     assert.equal(el("map-search").getAttribute("aria-expanded"), "true");
-    assert.equal(dock.hidden, false, "search keeps Saved and Add available");
-    assert.equal(sheet.hidden, true, "search lives in the dock rather than a panel");
+    assert.equal(el("open-search").getAttribute("aria-expanded"), "true");
+    assert.equal(dock.hidden, true, "the search bar takes the pill's place");
+    assert.equal(sheet.hidden, true, "search is a bar above the pill rather than a panel");
+    assert.equal(el("search-field").hidden, false, "the field opens above the pill");
     assert.equal(el("close-sheet").hidden, true);
-    assert.equal(el("open-search").querySelectorAll("input").length, 1);
-    assert.equal(el("open-search").querySelectorAll("button").length, 2, "the count, which is also Next, and Close");
-    assert.equal(el("search-close").hidden, false);
+    assert.equal(el("search-field").querySelectorAll("button").length, 2, "the count, which is also Next, and Close");
     assert.equal(el("search-status").closest("[hidden]"), null, "search status stays available to screen readers");
     assert.equal(el("search-count").parentElement, el("map-search").parentElement);
     assert.equal(el("search-count").hidden, true);
@@ -930,19 +931,20 @@ test("viewer controls: menu pill, panels, smart dark, layers, highlight, rotatio
     assert.equal(highlights?.active, true);
     el("map-canvas").dispatchEvent(new window.Event("click", { bubbles: true }));
     assert.equal(el("map-search").getAttribute("aria-expanded"), "true", "map clicks keep search open");
-    assert.equal(dock.hidden, false, "closing search keeps the navbar visible");
+    assert.equal(dock.hidden, true, "the pill waits until search closes");
     assert.equal(highlights?.active, true, "map clicks preserve search highlights");
     assert.equal((el("map-search") as HTMLInputElement).value, "north");
     click("open-search");
     input("map-search", "north");
     el("search-close").dispatchEvent(new window.Event("click", { bubbles: true }));
     assert.equal(el("map-search").getAttribute("aria-expanded"), "false", "Close in the field ends Search without reopening it through event bubbling");
-    assert.equal(el("search-close").hidden, true);
+    assert.equal(el("search-field").hidden, true);
+    assert.equal(el("open-search").getAttribute("aria-expanded"), "false");
     assert.equal(dock.hidden, false);
     assert.equal((el("map-search") as HTMLInputElement).value, "");
     focus.mock.resetCalls();
     click("open-search");
-    assert.equal(focus.mock.callCount(), 1, "tapping the search field opens it ready to type");
+    assert.equal(focus.mock.callCount(), 1, "tapping Search opens it ready to type");
     assert.equal(el("map-search").getAttribute("aria-expanded"), "true");
     input("map-search", "north");
     el("map-search").dispatchEvent(new window.Event("input"));
@@ -1884,6 +1886,7 @@ test("Measure asks for the map's scale once, then measures lines and gives route
     assert.ok(!el("scale-ask-dialog").hasAttribute("open"));
     assert.equal(tools.at(-1), "scale");
     assert.equal(el("tool-title").textContent, "Set scale");
+    assert.ok(el("dock").hidden, "setting the scale takes the pill's place");
     assert.ok((el("tool-done") as HTMLButtonElement).disabled, "Next waits for both ends");
 
     tap(0, 0);
@@ -1909,11 +1912,15 @@ test("Measure asks for the map's scale once, then measures lines and gives route
 
     assert.ok(el("tool-total").hidden, "nothing to read before two points");
     assert.ok(el("tool-done").hidden, "measuring has nothing to save");
+    // Measuring's card takes the pill's place.
+    assert.equal(el("tool-bar").hidden, false);
+    assert.equal(el("dock").hidden, true);
     tap(0, 0);
     tap(0, 240);
     tap(320, 240);
-    assert.equal(el("tool-total").textContent, "140 m", "the total follows every segment");
-    assert.equal(el("tool-message").textContent, "~2 min on foot · Tap to add, drag to adjust");
+    assert.equal(el("tool-distance").textContent, "140 m", "the total follows every segment");
+    assert.equal(el("tool-time").textContent, "~2 min on foot", "and so does the walk, beside it");
+    assert.equal(el("tool-message").textContent, "Tap to add, drag to adjust");
     assert.equal(routeDetail(), "150 m · ~2 min on foot", "routes show their length once the map has a scale");
 
     // The pencil changes the scale; × there goes back to the same line.
@@ -1924,10 +1931,11 @@ test("Measure asks for the map's scale once, then measures lines and gives route
     click("tool-cancel");
     assert.equal(tools.at(-1), "measure");
     assert.equal(tape?.length, 3, "the line waited");
-    assert.equal(el("tool-total").textContent, "140 m");
+    assert.equal(el("tool-distance").textContent, "140 m");
 
-    click("open-measure");
-    assert.equal(tools.at(-1), "browse", "the Measure button also closes it");
+    click("tool-cancel");
+    assert.equal(tools.at(-1), "browse", "X ends measuring");
+    assert.equal(el("dock").hidden, false, "and the pill comes back");
     assert.equal(tape, undefined, "and the line goes with it");
     click("open-measure");
     assert.ok(!el("scale-ask-dialog").hasAttribute("open"), "a map with a scale measures straight away");

@@ -537,8 +537,8 @@ export class ViewerControls {
       : name === "trail" ? icons.trail
       : name === "rotation" ? rotationModes[this.state.rotationMode].icon
       : name === "add" ? icons.add : icons.saved;
-    this.el("search-close").hidden = name !== "search";
     this.input("map-search").setAttribute("aria-expanded", String(name === "search"));
+    this.el("open-search").setAttribute("aria-expanded", String(name === "search"));
     for (const sheet of sheets) {
       const panel = this.el(`sheet-${sheet}`);
       panel.hidden = sheet !== name;
@@ -549,6 +549,7 @@ export class ViewerControls {
         String(sheet === name),
       );
     }
+    this.el("search-field").hidden = name !== "search";
     this.root.querySelector<HTMLElement>(".sheet-content")!.scrollTop = 0;
     // A hidden wheel cannot scroll, so it finds its degree once it shows.
     if (name === "rotation") this.renderRotation();
@@ -1308,16 +1309,9 @@ export class ViewerControls {
       if (this.openSheet === "search") this.input("map-search").blur();
     });
     this.on(this.input("map-search"), "input", () => this.queueSearch());
-    // The persistent field opens Search when tapped.
-    this.on(this.input("map-search"), "focus", () => {
-      if (this.openSheet !== "search") this.openSearch();
-    });
-    this.on(this.el("open-search"), "click", (event) => {
-      if ((event.target as Element).closest("button")) return;
-      if (this.openSheet !== "search") this.openSearch();
-    });
+    this.click("open-search", () => this.openSearch());
     this.click("search-count", () => this.stepSearch());
-    // Close clears the query and its map highlights while keeping the field available.
+    // Close clears the query and its map highlights, and brings the pill back.
     this.click("search-close", () => this.sheet(undefined));
     this.click("toast-undo", () => this.toastUndo?.());
     // The on-screen keyboard's Search key goes to the first match.
@@ -1868,7 +1862,9 @@ export class ViewerControls {
     measure.disabled = editing && !measuring;
     measure.setAttribute("aria-pressed", String(measuring));
     this.input("map-search").disabled = editing;
-    this.el("dock").hidden = editing;
+    this.el<HTMLButtonElement>("open-search").disabled = editing;
+    // A task's card, or the search bar, takes the pill's place at the bottom.
+    this.el("dock").hidden = editing || this.openSheet === "search";
     this.el("tool-bar").hidden = !editing || sheetOpen;
     const route = this.route();
     const count = route?.points.length ?? 0;
@@ -1903,7 +1899,7 @@ export class ViewerControls {
       measure: [
         icons.measure,
         t("Measure"),
-        metres !== undefined ? t("~{time} on foot · Tap to add, drag to adjust", { time: formatWalk(metres) })
+        metres !== undefined ? t("Tap to add, drag to adjust")
           : tape.length ? t("Tap the next point") : t("Tap where to start measuring"),
       ],
       scale: [
@@ -1917,10 +1913,10 @@ export class ViewerControls {
     this.el("tool-icon").innerHTML = icon;
     this.el("tool-title").textContent = title;
     this.el("tool-message").textContent = message;
-    // Measuring, the big number is the total; the hint below it says how long it takes.
-    const total = this.el("tool-total");
-    total.textContent = metres !== undefined ? formatDistance(metres) : "";
-    total.hidden = metres === undefined;
+    // Measuring, the big line is the total at one end and the walk at the other.
+    this.el("tool-total").hidden = metres === undefined;
+    this.el("tool-distance").textContent = metres !== undefined ? formatDistance(metres) : "";
+    this.el("tool-time").textContent = metres !== undefined ? t("~{time} on foot", { time: formatWalk(metres) }) : "";
     const rename = this.el("tool-rename");
     rename.hidden = this.tool !== "route" && this.tool !== "measure";
     const renameLabel = this.tool === "measure" ? t("Change scale") : t("Rename route");

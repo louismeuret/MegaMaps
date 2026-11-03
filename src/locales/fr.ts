@@ -637,7 +637,8 @@ export const fr = {
   "{size} KB": "{size} Ko",
   "{size} MB": "{size} Mo",
   "{speed} km/h": "{speed} km/h",
-  "~{time} on foot · Tap to add, drag to adjust": "~{time} à pied · Touchez pour ajouter, glissez pour ajuster",
+  "~{time} on foot": "~{time} à pied",
+  "Tap to add, drag to adjust": "Touchez pour ajouter, glissez pour ajuster",
   // What’s new (src/changelog.ts)
   "Waiting for Mega Maps to finish in another window…": "En attente de Mega Maps dans une autre fenêtre…",
   "What’s new": "Nouveautés",
