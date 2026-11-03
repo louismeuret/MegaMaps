@@ -18,8 +18,8 @@
 
   // Place details and editing share a bottom card, within thumb reach. Reading
   // sizes the card to what there is to read; longer details scroll under the
-  // fixed header. Editing pins Save to the card's bottom edge, in reach with the
-  // keyboard up; the form scrolls under it. Delete, Move and Edit points share a row above.
+  // fixed header. Editing pins Save to the card's bottom edge; the form scrolls
+  // under it. Delete, Move and Edit points share a row above.
   let { controls }: { controls: ViewerControls } = $props();
 
   const editing = $derived(controls.cardMode === "edit");
@@ -70,7 +70,7 @@
   style:--spot-y={controls.spot ? `${controls.spot.y}px` : undefined}
   oncancel={keepFormOpen} onclose={() => controls.cardClosed()}
   class={["spot-scrim [--accent:var(--c)] [--enter-from:translateY(32px)_scale(0.98)]",
-    editing ? "mb-[max(12px+var(--keyboard-inset,0px),env(safe-area-inset-bottom))] pb-0" : readingCard]}>
+    editing ? "mb-[max(12px,env(safe-area-inset-bottom))] pb-0" : readingCard]}>
   <DialogHeader id="marker-dialog-title" title={controls.cardTitle} icon={look.icon} class={editing ? "" : "mb-0! shrink-0"}
     close={{ id: "marker-cancel", onclick: () => controls.cancelCard() }} closeLabel={discarding ? t("Discard?") : t("Close")} closeArmed={discarding}>
     {#snippet actions()}

@@ -54,8 +54,9 @@
     <DialogHeader id="rename-map-title" title={t("Rename map")} icon={icons.edit}
       close={{ id: "rename-map-cancel", onclick: () => dialog.close() }} closeDisabled={saving} />
     <label>{t("Name")}<input bind:this={input} id="rename-map-name" bind:value={name} oninput={() => (error = "")}
-      disabled={saving} required autocomplete="off" enterkeyhint="done" aria-describedby="rename-map-error"></label>
-    <p id="rename-map-error" class="text-danger" role="alert" hidden={!error}>{error}</p>
+      disabled={saving} required autocomplete="off" enterkeyhint="done" aria-describedby="rename-map-error">
+      <!-- In the label, so it stays with the name in the bar above the keyboard. -->
+      <span id="rename-map-error" class="mt-8 block text-danger" role="alert" hidden={!error}>{error}</span></label>
     <Actions><Button type="submit" icon={icons.check} label={t("Save")} disabled={saving} /></Actions>
   </form>
 </dialog>

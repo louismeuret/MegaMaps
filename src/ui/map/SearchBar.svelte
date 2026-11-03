@@ -6,14 +6,14 @@
   import { overMap } from "./styles";
 
   // Searching, the field takes the pill's place; its count sits above it, so
-  // results never steal space from the query.
+  // results never steal space from the query. Typing, it rides above the keyboard.
   let { controls }: { controls: ViewerControls } = $props();
   const search = $derived((controls.tick, controls.searchView()));
   const open = $derived(controls.openSheet === "search");
 </script>
 
 <div id="search-field" hidden={!open}
-  class={[overMap, "motion bottom-(--hud-bottom) z-5 flex h-(--tool-row-h) items-center gap-12 rounded-pill border border-glass-line bg-black pr-16 pl-20",
+  class={[overMap, "motion bottom-(--hud-bottom) pointer-coarse:focus-within:bottom-(--above-keyboard) z-5 flex h-(--tool-row-h) items-center gap-12 rounded-pill border border-glass-line bg-black pr-16 pl-20",
     "shadow-glass [--c:var(--neon-saved)] focus-within:border-c/55"]}>
   <Icon svg={icons.search} class="size-24 shrink-0 text-c" />
   <input id="map-search" type="search" aria-label={t("Search map text and saved places")} aria-describedby="search-status"

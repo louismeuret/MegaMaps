@@ -15,7 +15,7 @@ import { displayName, plural, timeLeft } from "./ui/format";
 import { ViewerControls } from "./ui/viewer-controls.svelte";
 import { loadNavigation, lastMap, setLastMap } from "./storage/navigation";
 import { prunePhotos } from "./storage/photos";
-import { initKeyboardInset, initTapAway } from "./ui/keyboard-inset";
+import { initFieldLift, initKeyboardInset, initTapAway } from "./ui/keyboard-inset";
 import { lockPageZoom } from "./ui/page-zoom";
 import { loadOcr } from "./storage/ocr";
 import { needsOcr, type OcrIndex } from "./ocr/index";
@@ -822,6 +822,7 @@ function rerunOcr() {
     .finally(() => void renderOcrSettings());
 }
 initKeyboardInset();
+initFieldLift("dialog, #settings");
 initTapAway("dialog, #settings");
 lockPageZoom();
 void registerOfflineShell().then(refreshFooter);
