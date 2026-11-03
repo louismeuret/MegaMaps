@@ -394,6 +394,8 @@ export class ViewerControls {
     this.state.trail.push(mark);
     this.changed();
     happened("trail_marked");
+    // With trip_ended, tells trips left running from Trail opened only to look.
+    if (this.state.trail.length === 1) track("trip_started");
     this.toast(this.state.trail.length > 1 ? t("Trail point added") : t("Trip started"), "done", () => {
       this.state.trail = this.state.trail.filter((other) => other.time !== mark.time);
       this.changed();
