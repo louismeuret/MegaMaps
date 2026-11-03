@@ -15,7 +15,7 @@
   const editing = $derived(controls.tool !== "browse");
   const measuring = $derived(controls.tool === "measure" || controls.tool === "scale");
   const clock = $derived((controls.tick, controls.clockNow, controls.tripClock()));
-  const button = "min-w-0 place-items-center p-8 text-text disabled:opacity-35";
+  const button = "min-w-0 place-items-center p-8 disabled:opacity-35";
   const round = "grid size-44 flex-none rounded-full";
   const solid = [button, round, "bg-c text-black enabled:hover:bg-[color-mix(in_srgb,var(--c)_85%,#fff)] enabled:active:bg-[color-mix(in_srgb,var(--c)_75%,#fff)]"];
   const tinted = (shape: string) => [button, shape, "tint-c/14 inset-ring inset-ring-c/45 enabled:active:tint-c/24"];

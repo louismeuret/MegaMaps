@@ -194,7 +194,7 @@ test("with the four sides taken, a balloon opens diagonally, past the corner, it
   const left = 300 + Number(body.getAttribute("x")), bottom = 300 + Number(body.getAttribute("y")) + Number(body.getAttribute("height"));
   assert.ok(left > 300 && bottom < 300, "its body sits up and to the right of the place");
   assert.ok(taken.every(rect => !boundsOverlap(rect, balloonBox(balloon))), "it stays clear of what is taken");
-  assert.match(balloon.querySelector(".outline")!.getAttribute("d")!, / 0 0C/, "its tail still ends on the place");
+  assert.match(balloon.querySelector(".rim")!.getAttribute("d")!, / 0 0C/, "its tail still ends on the place");
   overlay.dispose();
 });
 
