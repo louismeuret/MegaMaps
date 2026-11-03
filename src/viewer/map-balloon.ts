@@ -77,7 +77,7 @@ export const routeSymbol = (color: string): BalloonSymbol => ({ color, icon: ico
  * or else to the right or the left, or else diagonally. Names only ever use textContent. */
 export class MapBalloon {
   readonly element = document.createElementNS(NS, "g");
-  private parts: Record<"textClip" | "casing" | "outline" | "fill" | "head" | "text", SVGElement> &
+  private parts: Record<"textClip" | "casing" | "rim" | "fill" | "head" | "text", SVGElement> &
     Partial<Record<"headClip" | "water" | "icon", SVGElement>>;
   private name = "";
   private size?: { raised: boolean; max: number; text: string; textSize: number; width: number; height: number };
@@ -98,10 +98,10 @@ export class MapBalloon {
       : "";
     this.element.setAttribute("class", "map-balloon");
     // The body pulses with its pin when the item is found (see .found in map.css).
-    this.element.innerHTML = `<g class="map-balloon-body"><clipPath id="map-balloon-text-${id}"><rect/></clipPath><path class="casing" fill="${PIN_CASING}" stroke="${PIN_CASING}" stroke-width="7" stroke-linejoin="round"/><path class="outline" fill="${color}" stroke="${color}" stroke-width="3" stroke-linejoin="round"/><path class="fill" fill="${CHIP}"/><circle class="head" fill="${color}"/>${water}${symbol.icon}<text clip-path="url(#map-balloon-text-${id})" font-weight="600"/></g>`;
+    this.element.innerHTML = `<g class="map-balloon-body"><clipPath id="map-balloon-text-${id}"><rect/></clipPath><path class="casing" fill="${PIN_CASING}" stroke="${PIN_CASING}" stroke-width="7" stroke-linejoin="round"/><path class="rim" fill="${color}" stroke="${color}" stroke-width="3" stroke-linejoin="round"/><path class="fill" fill="${CHIP}"/><circle class="head" fill="${color}"/>${water}${symbol.icon}<text clip-path="url(#map-balloon-text-${id})" font-weight="600"/></g>`;
     const part = (selector: string) => this.element.querySelector<SVGElement>(selector) ?? undefined;
     this.parts = {
-      textClip: part("clipPath rect")!, casing: part(".casing")!, outline: part(".outline")!, fill: part(".fill")!,
+      textClip: part("clipPath rect")!, casing: part(".casing")!, rim: part(".rim")!, fill: part(".fill")!,
       head: part(".head")!, text: part("text")!,
       headClip: part("clipPath circle"), water: part(".water"), icon: part("svg"),
     };
@@ -243,10 +243,10 @@ export class MapBalloon {
     const cx = u.x * reach + (u.diagonal ? side.x * flat : 0), cy = u.y * reach;
     const left = cx - width / 2, top = cy - half;
     const head = { x: left + half, y: cy, r: Math.max(0, between((pin.radius - CASING) * scale, size.height / 2 - 4)) };
-    const { textClip, casing, outline, fill, head: disc, text, headClip, water, icon } = this.parts;
+    const { textClip, casing, rim, fill, head: disc, text, headClip, water, icon } = this.parts;
     // The tail runs from inside the body to the place, in the place's colour
-    // like its pin; the body's dark fill is drawn over the outline, so only
-    // the outline's outer edge shows around it. A dark casing goes around both,
+    // like its pin; the body's dark fill is drawn over the rim, so only
+    // the rim's outer edge shows around it. A dark casing goes around both,
     // so the tail's point shows on any map.
     const base = reach - (u.diagonal ? Math.sqrt(Math.max(0, half ** 2 - TAIL_WIDTH ** 2))
       : side.x ? flat + Math.sqrt(Math.max(0, half ** 2 - TAIL_WIDTH ** 2))
@@ -258,7 +258,7 @@ export class MapBalloon {
     const shape = `${body}M${at(w, reach)}L${at(w, base)}C${at(w * 0.85, base - 3)} ${at(2.5, 3)} 0 0` +
       `C${at(-2.5, 3)} ${at(-w * 0.85, base - 3)} ${at(-w, base)}L${at(-w, reach)}Z`;
     set(casing, { d: shape });
-    set(outline, { d: shape });
+    set(rim, { d: shape });
     set(fill, { d: body });
     set(disc, { cx: head.x, cy: head.y, r: head.r });
     if (headClip) set(headClip, { cx: head.x, cy: head.y, r: head.r });
