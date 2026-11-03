@@ -57,7 +57,9 @@ const dangerPicks = dangerSteps
 
 // Map-first layout: almost nothing floats over the map.
 //   top corners   – Back on the left; Rotation and View on the right
-//   bottom pill   – Saved · Search · Trail · Measure · Add. Search swaps
+//   bottom pill   – Saved · Search · Trail · Measure · Add. During a trip,
+//                   Search and Measure turn round and Trail shows the time
+//                   since it started. Search swaps
 //                   the pill for a one-row bar, Measure for its task card,
 //                   and the others for panels; any open panel hides the pill.
 //                   Placing, drawing or moving swaps the pill for a task card
@@ -75,7 +77,7 @@ export const viewerMarkup = `
 <nav class="dock glass" id="dock" aria-label="${t("Map menu")}">
   <button id="open-saved" class="open-saved" data-sheet="saved" aria-label="${t("Saved")}" title="${t("Saved")}" aria-controls="sheet" aria-expanded="false">${icons.saved}</button>
   <button id="open-search" class="open-search" aria-label="${t("Search")}" title="${t("Search")}" aria-controls="search-field" aria-expanded="false">${icons.search}</button>
-  <button id="open-trail" class="open-trail" data-sheet="trail" aria-label="${t("Trail")}" title="${t("Trail")}" aria-controls="sheet" aria-expanded="false">${icons.trail}</button>
+  <button id="open-trail" class="open-trail" data-sheet="trail" aria-label="${t("Trail")}" title="${t("Trail")}" aria-controls="sheet" aria-expanded="false">${icons.trail}<span id="trip-clock" class="trip-clock" hidden></span></button>
   <button id="open-measure" class="open-measure" aria-label="${t("Measure")}" title="${t("Measure")}" aria-pressed="false">${icons.measure}</button>
   <button id="open-add" class="open-add" aria-label="${t("Add")}" title="${t("Add")}" data-sheet="add" aria-controls="sheet" aria-expanded="false">${icons.add}</button>
 </nav>

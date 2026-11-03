@@ -179,6 +179,7 @@ export class ViewerControls {
   private formStart = "";
   private cardDeleteTimer?: ReturnType<typeof setTimeout>;
   private confirmTimer?: ReturnType<typeof setTimeout>;
+  private tripClockTimer?: ReturnType<typeof setTimeout>;
   private confirming?: string;
   private rowMenu?: string;
   private rowMenuAnchor?: HTMLElement;
@@ -2172,8 +2173,11 @@ export class ViewerControls {
   /** Before a trip: what it is and how to start. During one: how far it has come. */
   private renderTrail() {
     const trail = this.state.trail, start = trail[0], last = trail.at(-1);
-    // The chip carries a red dot, like the one on the map, while a trip is under way.
+    // While a trip is under way, Trail shows how long it has run, and Search
+    // and Measure turn round to make room.
     this.el("open-trail").classList.toggle("on-trip", !!start);
+    this.el("dock").classList.toggle("on-trip", !!start);
+    this.renderTripClock();
     this.el("trip-help").hidden = this.el("trip-start").hidden = !!start;
     this.el("trip-card").hidden = this.el("trip-back").hidden = this.el("trip-end").hidden = !start;
     this.el("trip-hint").textContent = start
@@ -2187,6 +2191,16 @@ export class ViewerControls {
     const marked = t("Last marked {when}", { when: timeAgo(last.time, now) });
     this.el("trip-last").textContent = scale && trail.length > 1
       ? `${formatDistance(pathLength(trail) * scale)} · ${marked}` : marked;
+  }
+  /** The time since the trip started, on Trail, ticking each minute. */
+  private renderTripClock() {
+    clearTimeout(this.tripClockTimer);
+    const start = this.state.trail[0], clock = this.el("trip-clock");
+    clock.hidden = !start;
+    if (!start) return;
+    const elapsed = Math.max(0, Date.now() - start.time);
+    clock.textContent = formatMinutes(Math.floor(elapsed / 60_000));
+    this.tripClockTimer = setTimeout(() => this.renderTripClock(), 60_000 - (elapsed % 60_000));
   }
   private render() {
     this.renderTrail();
@@ -2476,6 +2490,7 @@ export class ViewerControls {
     clearTimeout(this.cardDeleteTimer);
     clearTimeout(this.confirmTimer);
     clearTimeout(this.discardTimer);
+    clearTimeout(this.tripClockTimer);
     this.stopCompass();
     this.showToast(false);
     const saved = this.flush();
