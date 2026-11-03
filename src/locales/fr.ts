@@ -277,6 +277,7 @@ export const fr = {
   "JPEG over 64 MB requires OPFS on this browser.": "Les JPEG de plus de 64 Mo nécessitent OPFS sur ce navigateur.",
   "JPEG, PNG or WebP image": "Image JPEG, PNG ou WebP",
   "just now": "à l’instant",
+  "Keep typing to search the map’s text.": "Continuez à taper pour chercher dans le texte de la carte.",
   "Keep Mega Maps open while the share is imported.": "Gardez Mega Maps ouvert pendant l’import du partage.",
   "Keep Mega Maps open while the update downloads.": "Gardez Mega Maps ouvert pendant le téléchargement de la mise à jour.",
   "Keep Mega Maps open while your map is prepared.": "Gardez Mega Maps ouvert pendant la préparation de votre carte.",

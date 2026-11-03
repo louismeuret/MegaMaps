@@ -2443,6 +2443,8 @@ export class ViewerControls {
     const message = active
       ? stepping ? t("Match {current} of {total}", { current: this.searchPosition + 1, total: count })
         : count ? plural(count, "match")
+        // One letter searches saved places only (see searchMap).
+        : this.ocr && /^\p{L}$/u.test(normalizeText(this.searchQuery)) ? t("Keep typing to search the map’s text.")
         : this.ocr ? t("No matching text or saved places found.") : t("No matching saved places yet.")
       : t("Search map text and saved places. Drag and zoom to explore.");
     const progress = this.ocrMessage || (!this.ocr ? t("Map text isn’t searchable yet. Run text detection in the map’s Advanced settings.") : "");

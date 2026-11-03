@@ -1021,6 +1021,11 @@ test("viewer controls: menu pill, panels, smart dark, layers, highlight, rotatio
     assert.equal(el("search-count").textContent, "No matches");
     assert.equal(el("search-count").hidden, false);
     assert.equal((el("search-count") as HTMLButtonElement).disabled, true, "nothing to step to");
+    input("map-search", "q");
+    el("map-search").dispatchEvent(new window.Event("input"));
+    t.mock.timers.tick(200);
+    assert.match(el("search-status").textContent!, /^Keep typing to search the map’s text\./,
+      "one letter searches only saved places, and says so");
     // A double search keeps the results of both searches that meet.
     input("map-search", "north; south");
     el("map-search").dispatchEvent(new window.Event("input"));
