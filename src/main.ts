@@ -956,8 +956,10 @@ async function runOcr(
     return index;
   } catch (error) {
     track("text_scanned", { ok: false, ...controller.signal.aborted ? { stopped: true } : { error: failure(error) } });
+    // A full device fails the save at the end; rerunning wouldn't help until there's room.
     const message = controller.signal.aborted
       ? t("Text detection stopped. Rerun it in Advanced settings.")
+      : error instanceof Error && error.name === "QuotaExceededError" ? errorMessage(error)
       : t("Text detection failed. Rerun it in Advanced settings.");
     ocrErrors.set(map.id, message);
     if (currentMap?.id === map.id) controls?.updateOcr(previous, message);
