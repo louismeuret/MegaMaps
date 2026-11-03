@@ -154,7 +154,6 @@
     opacity var(--motion-fast) var(--ease-in),
     transform var(--motion-fast) var(--ease-in),
     border-color var(--motion-fast),
-    bottom var(--motion-fast),
     display var(--motion-fast) allow-discrete;
   &:not([hidden]) {
     transition-duration: var(--motion-base);
@@ -443,13 +442,15 @@
   bottom: var(--above-keyboard);
   width: var(--surface-width);
   margin: 0 auto;
+  animation: var(--animate-enter);
+  transition: bottom var(--motion-fast);
+}
+label[data-typing] {
   padding: 12px;
   background: var(--bg);
   border: 1px solid color-mix(in srgb, var(--accent, var(--neon-view)) 45%, transparent);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-dialog);
-  animation: var(--animate-enter);
-  transition: bottom var(--motion-fast);
 }
 /* Notes grow with the text, up to what the room above the keyboard allows. */
 [data-typing] textarea {

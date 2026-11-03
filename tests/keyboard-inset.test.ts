@@ -56,7 +56,8 @@ function form() {
   const window = new Window(), { document } = window;
   Object.assign(globalThis, { getComputedStyle: window.getComputedStyle.bind(window) });
   document.body.innerHTML = `<dialog><form><label id="name-label">Name<input id="name"></label><label id="note-label">Note<textarea id="note"></textarea></label>
-    <label id="day-label">Date<input id="day" type="date"></label></form></dialog><input id="bare"><label id="outside-label"><input id="outside"></label>`;
+    <label id="day-label">Date<input id="day" type="date"></label></form></dialog><input id="bare"><label id="outside-label"><input id="outside"></label>
+    <div id="bar" data-bar><input id="query" type="search"></div>`;
   const page = document as unknown as Document;
   const element = (id: string) => page.getElementById(id)!;
   const focus = (id: string) => element(id).dispatchEvent(new window.Event("focusin", { bubbles: true }) as unknown as Event);
@@ -88,6 +89,17 @@ test("the field being typed in goes above the keyboard and its form keeps its sh
   assert.equal(inForm(), 3, "closing the keyboard puts the field back");
 });
 
+test("a bar with its own look goes above the keyboard whole", () => {
+  const { page, element, focus, blur, typing } = form();
+  initFieldLift("dialog, [data-bar]", page, () => true);
+  focus("query");
+  assert.deepEqual(typing(), ["bar"]);
+  assert.equal(element("bar").nextElementSibling?.id, "");
+  blur("query");
+  assert.deepEqual(typing(), []);
+  assert.equal(element("bar").nextElementSibling, null);
+});
+
 test("only text fields in a form on a touch screen go above the keyboard", () => {
   const touch = form();
   initFieldLift("dialog", touch.page, () => true);
@@ -102,7 +114,7 @@ test("only text fields in a form on a touch screen go above the keyboard", () =>
 
 test("the keyboard's height is kept for next time, and putting it away ends typing", (t) => {
   const { document } = new Window();
-  document.body.innerHTML = `<input id="name"><button id="save"></button>`;
+  document.body.innerHTML = `<input id="name"><button id="save"></button><section id="settings"><input id="nickname"></section>`;
   const page = document as unknown as Document, root = page.documentElement;
   const field = page.getElementById("name")!, button = page.getElementById("save")!;
   let active: Element = field;
@@ -119,7 +131,14 @@ test("the keyboard's height is kept for next time, and putting it away ends typi
     globals.cancelAnimationFrame = before.cancel;
   });
   Object.assign(globals, {
-    window: { visualViewport: viewport },
+    window: {
+      visualViewport: viewport,
+      // iOS answers a scroll with a scroll event, as the page moves back.
+      scrollBy: (_x: number, y: number) => {
+        viewport.offsetTop += y;
+        viewport.dispatchEvent(new Event("scroll"));
+      },
+    },
     document: page,
     requestAnimationFrame: (run: () => void) => (run(), 0),
     cancelAnimationFrame: () => {},
@@ -147,4 +166,23 @@ test("the keyboard's height is kept for next time, and putting it away ends typi
   keyboard(460);
   keyboard(800);
   assert.equal(blur.mock.callCount(), 1);
+
+  // iOS pans the page: it comes back, so the field isn't lifted on top of the pan.
+  keyboard(460);
+  viewport.offsetTop = 340;
+  viewport.dispatchEvent(new Event("scroll"));
+  assert.equal(viewport.offsetTop, 0);
+  assert.equal(inset(), "340px");
+
+  // A page that scrolls keeps its pan, and the field rides along with it: the
+  // keyboard's whole height on top would put it far above.
+  active = page.getElementById("nickname")!;
+  viewport.offsetTop = 340;
+  viewport.dispatchEvent(new Event("scroll"));
+  assert.equal(viewport.offsetTop, 340);
+  assert.equal(inset(), "0px");
+  active = button;
+  viewport.offsetTop = 0;
+  keyboard(800);
+  assert.equal(inset(), "380px", "between keyboards it holds the tallest seen");
 });

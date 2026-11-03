@@ -22,12 +22,12 @@ export function isTextEntry(element: Element | null) {
 
 // Phone keyboards cover the page instead of resizing it, and the page stays as
 // it is: only the field being typed in moves, just above the keyboard. Publish
-// the covered height as --keyboard-inset for it. It outlives the keyboard, so
-// the next field goes straight to its place while the keyboard is still rising.
+// where that is as --keyboard-inset. Between keyboards it holds the keyboard's
+// height, so the next field goes straight to its place as the keyboard rises.
 export function initKeyboardInset(root = document.documentElement) {
   const viewport = window.visualViewport;
   if (!viewport) return;
-  let frame = 0, shown = 0, open = false;
+  let frame = 0, shown: number | undefined, height = 0, open = false;
   const update = () => {
     cancelAnimationFrame(frame);
     frame = requestAnimationFrame(() => {
@@ -37,9 +37,14 @@ export function initKeyboardInset(root = document.documentElement) {
       // Android's Back puts the keyboard away but leaves the field focused.
       if (typing && open && !covered) field!.blur();
       open = typing && covered > 0;
-      const inset = keyboardInset(root.clientHeight, viewport);
+      if (open) height = Math.max(height, covered);
+      // iOS may still pan the page to reveal a field. Off the scrolling pages, nothing
+      // else moves it, so undo that. Until it's undone the field rides along: a
+      // panned page has that much less left to rise.
+      if (open && viewport.offsetTop > 0 && !field!.closest("#settings")) window.scrollBy(0, -viewport.offsetTop);
+      const inset = open ? keyboardInset(root.clientHeight, viewport) : height;
       // Set on the root, it can restyle the whole page; scrolling sends the same value over and over.
-      if (!typing || !inset || inset === shown) return;
+      if (!height || inset === shown) return;
       shown = inset;
       root.style.setProperty("--keyboard-inset", `${inset}px`);
     });
@@ -50,10 +55,10 @@ export function initKeyboardInset(root = document.documentElement) {
   document.addEventListener("focusout", update);
 }
 
-// Within `scope`, a field's label moves to the bar above the keyboard as it takes
-// focus. That has to happen at once: a field left low on the screen makes the
-// browser pan the whole page to reveal it. A blank copy holds its place in the
-// form, and it glides back when typing ends.
+// Within `scope`, a field's label, or the [data-bar] it's in, moves above the
+// keyboard as it takes focus. That has to happen at once, with no transition: a
+// field still low on the screen makes iOS pan the whole page to reveal it. A blank
+// copy holds its place in the form, and it glides back when typing ends.
 export function initFieldLift(scope: string, doc = document, touch = () => matchMedia("(pointer: coarse)").matches) {
   let lifted: { label: HTMLElement; slot: HTMLElement } | undefined;
   const drop = () => {
@@ -72,7 +77,7 @@ export function initFieldLift(scope: string, doc = document, touch = () => match
   doc.addEventListener("focusin", (event) => {
     drop();
     const field = event.target as HTMLElement;
-    const label = field.closest("label");
+    const label = field.closest<HTMLElement>("label, [data-bar]");
     if (!isTextEntry(field) || !label || !field.closest(scope) || !touch()) return;
     // A dialog still rising would carry a fixed field along with it.
     for (const rise of label.closest("dialog")?.getAnimations() ?? [])
