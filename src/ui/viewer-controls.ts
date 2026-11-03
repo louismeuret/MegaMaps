@@ -2387,8 +2387,11 @@ export class ViewerControls {
   // Keep detection status available to assistive technology while indexing;
   // a running scan also passes its progress, from 0 to 1, for the top toast.
   updateOcr(index: OcrIndex | undefined, message = "", progress?: number) {
-    const sameIndex = this.ocr === index;
-    this.ocr = index;
+    // The library reloads the index from storage on each refresh: the same scan
+    // keeps the copy loaded, so search keeps its place and its cached word spans.
+    const sameIndex = this.ocr === index ||
+      (!!this.ocr && this.ocr.mapId === index?.mapId && this.ocr.completedAt === index.completedAt);
+    if (!sameIndex) this.ocr = index;
     this.ocrMessage = message;
     const toast = this.el("ocr-progress");
     toast.hidden = progress === undefined;

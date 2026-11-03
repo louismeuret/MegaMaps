@@ -977,6 +977,7 @@ test("viewer controls: menu pill, panels, smart dark, layers, highlight, rotatio
     const secondPolygon = polygon.map(({ x, y }) => ({ x: x + 500, y }));
     const multiple = {
       ...index,
+      completedAt: 2,
       lines: [...index.lines, {
         text: "North entrance", confidence: 90,
         words: [{ text: "North", polygon: secondPolygon }],
@@ -995,6 +996,8 @@ test("viewer controls: menu pill, panels, smart dark, layers, highlight, rotatio
     controls.updateOcr(multiple, "Detecting map text · 30%");
     assert.equal(highlights?.selected, 1, "OCR progress preserves the overlay selection");
     assert.equal(el("search-count").textContent, "2 / 2", "progress keeps the current match");
+    controls.updateOcr(structuredClone(multiple));
+    assert.equal(el("search-count").textContent, "2 / 2", "the same scan read again from storage keeps the current match");
     key(el("map-search"), "Enter");
     assert.deepEqual(framed.at(-1), polygon, "next wraps to the first match");
     // The count steps on once the keyboard is away.
@@ -1032,7 +1035,7 @@ test("viewer controls: menu pill, panels, smart dark, layers, highlight, rotatio
     t.mock.timers.tick(200);
     assert.equal(el("search-count").textContent, "No matches");
     const southPolygon = polygon.map(({ x, y }) => ({ x, y: y + 30 }));
-    controls.updateOcr({ ...multiple, lines: [...multiple.lines,
+    controls.updateOcr({ ...multiple, completedAt: 3, lines: [...multiple.lines,
       { text: "South", confidence: 90, words: [{ text: "South", polygon: southPolygon }] }] });
     assert.equal(el("search-count").textContent, "1 match");
     assert.deepEqual(highlights?.matches[0]?.midpoint, { x: 140, y: 225 });
