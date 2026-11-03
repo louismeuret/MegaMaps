@@ -83,15 +83,24 @@ export function findWords(text: string, needle: string) {
 
 // Phrase matches highlight just the matching words, including partial-word
 // queries, but carry the whole line so the callout reads in context.
+type Spans = { words: { word: OcrWord; text: string; start: number; end: number }[]; text: string };
+/** Lines never change once detected, so each is normalized once, not on every keystroke. */
+const normalized = new WeakMap<OcrLine, Spans>();
 /** A line's words, normalized, with where each sits in the line's text. */
 function wordSpans(line: OcrLine) {
-  let cursor = 0;
-  return line.words.map((word) => {
-    const text = normalizeText(word.text);
-    const start = cursor;
-    cursor += text.length + 1;
-    return { word, text, start, end: cursor - 1 };
-  });
+  let spans = normalized.get(line);
+  if (!spans) {
+    let cursor = 0;
+    const words = line.words.map((word) => {
+      const text = normalizeText(word.text);
+      const start = cursor;
+      cursor += text.length + 1;
+      return { word, text, start, end: cursor - 1 };
+    });
+    spans = { words, text: words.map((span) => span.text).join(" ") };
+    normalized.set(line, spans);
+  }
+  return spans;
 }
 export function searchOcr(
   index: OcrIndex | undefined,
@@ -101,8 +110,7 @@ export function searchOcr(
   if (!index || !needle) return [];
   const matches: OcrMatch[] = [];
   for (const line of index.lines) {
-    const spans = wordSpans(line);
-    const text = spans.map((span) => span.text).join(" ");
+    const { words: spans, text } = wordSpans(line);
     const label = line.words.map((word) => word.text).join(" ");
     for (const offset of findText(text, needle)) {
       const words = spans.filter(
@@ -118,8 +126,8 @@ export function searchOcr(
   // Words typed in another order than printed still find a line holding them all.
   if (!matches.length && needle.includes(" "))
     for (const line of index.lines) {
-      const spans = wordSpans(line);
-      const found = findWords(spans.map((span) => span.text).join(" "), needle);
+      const { words: spans, text } = wordSpans(line);
+      const found = findWords(text, needle);
       if (!found) continue;
       const words = spans.filter((span) => found.some(({ length, offsets }) =>
         offsets.some((offset) => span.start < offset + length && span.end > offset)));
