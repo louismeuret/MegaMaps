@@ -1,4 +1,4 @@
-import { t } from "../i18n";
+import { locale, t } from "../i18n";
 import { MAX_FILE_BYTES, MAX_PIXELS, MAX_SIDE, MAX_SOURCE_PIXELS, type ImageHeader } from "../types";
 const text = (bytes: Uint8Array, start: number, count: number) =>
   String.fromCharCode(...bytes.subarray(start, start + count));
@@ -33,9 +33,13 @@ function unsupported(b: Uint8Array) {
 }
 // Read container headers without decoding pixels or loading the whole original.
 export async function readHeader(file: Blob): Promise<ImageHeader> {
-  if (file.size > MAX_FILE_BYTES)
-    throw new Error(t("This version supports files up to 256 MB."));
   const b = new Uint8Array(await file.slice(0, 32).arrayBuffer());
+  if (file.size > MAX_FILE_BYTES) {
+    const size = Math.ceil(file.size / 1048576).toLocaleString(locale);
+    throw new Error(b[0] === 0xff && b[1] === 0xd8
+      ? t("This file is {size} MB; Mega Maps takes files up to 256 MB. Save the map again at a lower JPEG quality, then import that.", { size })
+      : t("This file is {size} MB; Mega Maps takes files up to 256 MB. Save the map as a JPEG, which is much smaller, then import that.", { size }));
+  }
   const v = new DataView(b.buffer);
   let header: ImageHeader;
   if (

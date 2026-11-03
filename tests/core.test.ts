@@ -233,6 +233,12 @@ test("a PDF, TIFF or HEIC file is named, with what to do instead", async () => {
   await assert.rejects(readHeader(header("\0\0\0\x18ftypheic\0\0\0\0mif1heic")), /^Error: HEIC photos/);
   await assert.rejects(readHeader(header("GIF89a\x01\0\x01\0\0\0\0\0")), /^Error: Choose a JPEG, PNG, or WebP image\.$/);
 });
+test("a file over the size limit says how big it is and how to make it fit", async () => {
+  const big = (bytes: number[], size: number) =>
+    Object.defineProperty(new Blob([Uint8Array.from(bytes)]), "size", { value: size });
+  await assert.rejects(readHeader(big([0xff, 0xd8, 0xff], 300 * 1048576 + 1)), /^Error: This file is 301 MB.*lower JPEG quality/);
+  await assert.rejects(readHeader(big([137, 80, 78, 71], 400 * 1048576)), /^Error: This file is 400 MB.*as a JPEG/);
+});
 test("malformed, oversized, and truncated pixel data fail explicitly", async () => {
   await assert.rejects(readHeader(new Blob(["not an image"])));
   await assert.rejects(readHeader(png(65535, 65535, 8, 2, new Uint8Array())));
