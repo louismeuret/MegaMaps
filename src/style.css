@@ -2342,16 +2342,12 @@ button.glass:active:not(:disabled) {
 .measure-dialog {
   --accent: var(--neon-measure);
 }
-/* Trail, like the dot that marks where you are, is red. While a trip is under
-   way its chip carries that dot. */
+/* Trail, like the dot that marks where you are, is red. */
 .open-trail,
 .sheet[data-panel="trail"],
 [data-tool="trail"] .tool-bar,
 .trip-card {
   --c: var(--neon-trail);
-}
-.open-trail {
-  position: relative;
 }
 /* Search, Trail and Measure share the room between Saved and Add. */
 .dock > :is(.open-search, .open-trail, .open-measure) {
@@ -2365,23 +2361,30 @@ button.glass:active:not(:disabled) {
 .dock > :is(.open-search, .open-trail, .open-measure) svg {
   width: calc(var(--icon-button-size) - 2 * var(--space-8));
 }
-/* The trip dot stays by the icon, not at the far end of the wide button. */
-.dock > .open-trail.on-trip::after {
-  right: calc(50% - 20px);
+/* During a trip, Search and Measure turn round like Saved and Add, and Trail
+   takes the room to show how long the trip has run. */
+.dock.on-trip > :is(.open-search, .open-measure) {
+  flex: none;
+  width: var(--icon-button-size);
+  border-radius: var(--radius-round);
+}
+.dock > .open-trail.on-trip {
+  display: flex;
+  justify-content: center;
+  gap: var(--space-8);
+}
+.dock > .open-trail.on-trip svg {
+  flex: none;
+}
+.trip-clock {
+  color: var(--c);
+  font-size: var(--font-size-body);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 .dock > :is(.open-search, .open-trail, .open-measure):active:not(:disabled) {
   background: color-mix(in srgb, var(--c) 24%, #000);
-}
-.open-trail.on-trip::after {
-  content: "";
-  position: absolute;
-  top: 2px;
-  right: 2px;
-  width: 10px;
-  height: 10px;
-  border-radius: var(--radius-round);
-  background: var(--neon-trail);
-  box-shadow: 0 0 0 2px #000;
 }
 /* Rotation always has a mode, so like View it only lights up while open. */
 .open-rotation,

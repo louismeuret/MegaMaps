@@ -2097,11 +2097,16 @@ test("the Trail panel starts a trip, ends it with a summary, and keeps it in Pas
     assert.equal(tools.at(-1), "browse", "one tap marks it and the map is back");
     assert.equal(el("toast").textContent, "Trip started");
     assert.equal(el("open-trail").classList.contains("on-trip"), true, "the chip shows a trip is under way");
+    assert.equal(el("dock").classList.contains("on-trip"), true, "Search and Measure make room for the clock");
+    assert.equal(el("trip-clock").textContent, "< 1 min");
+    t.mock.timers.tick(60_000);
+    assert.equal(el("trip-clock").textContent, "1 min", "the clock ticks each minute");
 
     // Under way, points come from the long-press wheel; the panel only reports and ends.
-    t.mock.timers.tick(30 * 60_000);
+    t.mock.timers.tick(29 * 60_000);
     markHere(100, 300);
     t.mock.timers.tick(65 * 60_000);
+    assert.equal(el("trip-clock").textContent, "1 h 35");
     click("open-trail");
     assert.equal(el("trip-start").hidden, true);
     assert.equal(el("trip-summary").textContent, "Started 2:05 PM · 2 points");
@@ -2111,6 +2116,7 @@ test("the Trail panel starts a trip, ends it with a summary, and keeps it in Pas
     click("trip-end");
     assert.deepEqual(state.trail, []);
     assert.equal(el("open-trail").classList.contains("on-trip"), false);
+    assert.equal(el("trip-clock").hidden, true, "the clock goes with the trip");
     assert.equal(state.trips.length, 1);
     assert.equal(el("trip-dialog").hasAttribute("open"), true);
     assert.equal(el("trip-title").textContent, "Trip Oct 20, 2026");
