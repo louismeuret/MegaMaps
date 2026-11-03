@@ -274,6 +274,52 @@ test("while the screen loads, the parents of its missing tiles load first, and d
   }
 });
 
+test("a screen tile that failed to read is read again on a later move, and its error shows once", async () => {
+  const canvas = createCanvas(512, 512);
+  const blob = new Blob([new Uint8Array(await canvas.encode("png"))]);
+  const root = await mkdtemp(path.join(tmpdir(), "map-viewer-retry-"));
+  await installPlatform(root);
+  let reads = 0, failures = 2;
+  const errors: string[] = [];
+  const store = {
+    async put() {},
+    async deleteMap() {},
+    async get() {
+      reads++;
+      await new Promise((resolve) => setTimeout(resolve, 1));
+      if (failures-- > 0) throw new DOMException("busy", "NotReadableError");
+      return blob;
+    },
+  };
+  const cache = new TileCache(store, "retry", () => {}, (message) => errors.push(message));
+  const screen = [{ level: 0, x: 0, y: 0 }];
+  const settle = () => new Promise((resolve) => setTimeout(resolve, 30));
+  const now = performance.now.bind(performance);
+  let later = 0;
+  performance.now = () => now() + later;
+  try {
+    cache.plan(screen);
+    await settle();
+    cache.plan(screen);
+    await settle();
+    assert.equal(reads, 1, "a move right after the failure doesn't read it again");
+    later += 4000;
+    cache.plan(screen);
+    await settle();
+    assert.equal(reads, 2);
+    later += 4000;
+    cache.plan(screen);
+    await settle();
+    assert.equal(reads, 3);
+    assert.equal(cache.complete, true, "the tile shows once a read works");
+    assert.equal(errors.length, 1);
+  } finally {
+    performance.now = now;
+    cache.dispose();
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test("shipped decoder is small and the app does not depend on a remote codec", async () => {
   const binary = await readFile(
     new URL("../public/codecs/jpeg.wasm", import.meta.url),
