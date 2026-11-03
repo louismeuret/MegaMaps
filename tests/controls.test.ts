@@ -908,7 +908,11 @@ test("viewer controls: menu pill, panels, smart dark, layers, highlight, rotatio
     assert.equal(el("search-count").parentElement, el("map-search").parentElement);
     assert.equal(el("search-count").hidden, true);
     assert.equal(el("sheet-dismiss").hidden, true, "search leaves the canvas available for gestures");
+    controls.updateOcr(undefined, "Detecting map text · 10%", 0.1, "4 min left");
+    assert.equal(el("ocr-percent").textContent, "10% · 4 min left", "the scan's time left shows beside its percentage");
+    assert.equal(el("ocr-progress").hidden, false);
     controls.updateOcr(undefined, "Detecting map text · 10%");
+    assert.equal(el("ocr-progress").hidden, true);
     input("map-search", "north");
     el("map-search").dispatchEvent(new window.Event("input"));
     assert.equal(highlights?.active, false, "no masking before OCR is ready");

@@ -80,6 +80,8 @@ let ocrJob:
       controller: AbortController;
       message: string;
       fraction: number;
+      /** Roughly how long the scan has left, once it can tell. */
+      left: string;
       done: Promise<void>;
     }
   | undefined;
@@ -448,6 +450,7 @@ async function refresh() {
               index,
               job?.message ?? ocrErrors.get(updated.id),
               job?.fraction,
+              job?.left,
             );
         })
         .catch(() => {});
@@ -918,6 +921,7 @@ async function runOcr(
     controller,
     message: t("Starting local text detection…"),
     fraction: 0,
+    left: "",
     done,
   };
   ocrJob = job;
@@ -925,9 +929,9 @@ async function runOcr(
   if (retiling?.mapId === map.id) await stopRetiling();
   const update = () => {
     if (currentMap?.id === map.id)
-      controls?.updateOcr(previous, job.message, job.fraction);
+      controls?.updateOcr(previous, job.message, job.fraction, job.left);
     if (selectedMap?.id === map.id) {
-      element("ocr-status").textContent = job.message;
+      element("ocr-status").textContent = job.left ? `${job.message} · ${job.left}` : job.message;
       element<HTMLButtonElement>("rerun-ocr").disabled = true;
       element("stop-ocr").hidden = false;
     }
@@ -941,6 +945,7 @@ async function runOcr(
       (progress) => {
         job.message = progress.message;
         job.fraction = progress.fraction;
+        job.left = timeLeft(progress.fraction, Date.now() - started);
         update();
         onProgress(progress);
       },
@@ -1011,7 +1016,7 @@ async function prepareMapSearch(map: MapRecord, version: number) {
     const index = await loadOcr(map.id);
     if (version !== openVersion) return;
     const job = ocrJob?.mapId === map.id ? ocrJob : undefined;
-    controls?.updateOcr(index, job?.message ?? ocrErrors.get(map.id), job?.fraction);
+    controls?.updateOcr(index, job?.message ?? ocrErrors.get(map.id), job?.fraction, job?.left);
     if (index && needsOcr(index) && !job) offerTextDetection(map, true);
   } catch (error) {
     if (version === openVersion && !ocrErrors.has(map.id))
@@ -1032,7 +1037,7 @@ async function renderOcrSettings() {
   const running = ocrJob?.mapId === map.id;
   element("advanced-map-name").textContent = displayName(map.name);
   element("ocr-status").textContent = running
-    ? ocrJob!.message
+    ? ocrJob!.left ? `${ocrJob!.message} · ${ocrJob!.left}` : ocrJob!.message
     : (ocrErrors.get(map.id) ??
       (index
         ? `${plural(index.lines.length, "detected label")}\n${t("Last scanned {date}", { date: new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" }).format(index.completedAt) })}`

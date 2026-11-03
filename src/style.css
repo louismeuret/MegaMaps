@@ -2095,6 +2095,7 @@ button.glass:active:not(:disabled) {
 }
 .ocr-percent {
   min-width: 4ch;
+  white-space: nowrap;
   font-weight: 650;
   font-variant-numeric: tabular-nums;
   text-align: right;

@@ -2386,7 +2386,8 @@ export class ViewerControls {
   }
   // Keep detection status available to assistive technology while indexing;
   // a running scan also passes its progress, from 0 to 1, for the top toast.
-  updateOcr(index: OcrIndex | undefined, message = "", progress?: number) {
+  /** `left` is the scan's estimated time left, shown beside its percentage. */
+  updateOcr(index: OcrIndex | undefined, message = "", progress?: number, left = "") {
     // The library reloads the index from storage on each refresh: the same scan
     // keeps the copy loaded, so search keeps its place and its cached word spans.
     const sameIndex = this.ocr === index ||
@@ -2397,7 +2398,7 @@ export class ViewerControls {
     toast.hidden = progress === undefined;
     if (progress !== undefined) {
       const percent = Math.floor(progress * 100);
-      this.el("ocr-percent").textContent = `${percent}%`;
+      this.el("ocr-percent").textContent = left ? `${percent}% · ${left}` : `${percent}%`;
       toast.setAttribute("aria-valuenow", String(percent));
     }
     this.renderSearch(sameIndex || !!this.searchTimer);
