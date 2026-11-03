@@ -163,8 +163,7 @@ export class ViewerControls {
   private cardModal = false;
   private reopeningCard = false;
   private markerPoint?: Point;
-  private autoMarkerName = "";
-  /** Printed map text under the place being added, which names it better than a number. */
+  /** Printed map text under the place being added, which names it better than its kind. */
   private mapLabel?: string;
   private nameAction?: (name: string) => void;
   private toastTimer?: ReturnType<typeof setTimeout>;
@@ -615,9 +614,15 @@ export class ViewerControls {
     this.el("marker-kind-current").innerHTML =
       `${placeIcon(kind, levels)}<span>${(markerKinds[kind] ?? markerKinds.landmark).label}</span>`;
   }
-  private markerName(kind: MapMarker["kind"]) {
-    return this.mapLabel ??
-      nextName(markerKinds[kind].label, this.state.markers.map((m) => m.label));
+  /** A new place's name field starts empty, hinting the name it gets if left so. */
+  private hintMarkerName() {
+    this.input("marker-label").placeholder = this.editingMarker || this.editingRoute ? ""
+      : this.mapLabel ?? markerKinds[this.markerKind()].label;
+    this.renderSave();
+  }
+  private markerLabel() {
+    const label = this.input("marker-label");
+    return label.value.trim() || label.placeholder;
   }
   /** Places and routes share one form: a name, a description and photos. */
   private openForm(
@@ -643,6 +648,7 @@ export class ViewerControls {
     this.el("marker-move").hidden = true;
     this.el("route-points").hidden = !route;
     this.input("marker-label").value = fields.name;
+    this.input("marker-label").placeholder = "";
     this.el<HTMLTextAreaElement>("marker-description").value = fields.description ?? "";
     this.armCardDelete();
     this.formVersion++;
@@ -657,11 +663,9 @@ export class ViewerControls {
     this.markerPoint = point;
     const kind = marker?.kind ?? this.newMarkerKind;
     this.mapLabel = marker ? undefined : ocrLabelAt(this.ocr, point);
-    this.autoMarkerName = marker
-      ? ""
-      : this.markerName(kind);
-    this.openForm(title, { ...marker, name: marker?.label ?? this.autoMarkerName });
+    this.openForm(title, { ...marker, name: marker?.label ?? "" });
     this.setMarkerKind(kind);
+    this.hintMarkerName();
     this.formWater = marker?.water;
     this.formDanger = marker?.danger ?? 2;
     this.paintFormKind();
@@ -742,7 +746,7 @@ export class ViewerControls {
   /** Save waits for a name and for photos still being prepared. */
   private renderSave() {
     this.el<HTMLButtonElement>("marker-save").disabled =
-      this.photoJobs > 0 || !this.input("marker-label").value.trim();
+      this.photoJobs > 0 || !this.markerLabel();
   }
   /** What the edit form holds, compared with how it opened. */
   private formState() {
@@ -1565,14 +1569,6 @@ export class ViewerControls {
       this.el("marker-description").focus();
     });
     this.on(label, "input", () => this.renderSave());
-    // The first tap on a suggested name selects it, so typing replaces it.
-    let labelFocused = false;
-    this.on(label, "pointerdown", () => {
-      labelFocused = this.root.ownerDocument.activeElement === label;
-    });
-    this.on(label, "click", () => {
-      if (!labelFocused && this.autoMarkerName && label.value === this.autoMarkerName) label.select();
-    });
     this.click("marker-add-photos", () => this.input("marker-photo-input").click());
     this.on(this.input("marker-photo-input"), "change", () => {
       const input = this.input("marker-photo-input");
@@ -1616,12 +1612,7 @@ export class ViewerControls {
       this.on(input, "click", () => this.dialog("kind-dialog").close());
       this.on(input, "change", () => {
         this.paintFormKind();
-        // Keep auto names in sync with the chosen kind until the user types.
-        const label = this.input("marker-label");
-        if (this.autoMarkerName && label.value === this.autoMarkerName) {
-          this.autoMarkerName = this.markerName(this.markerKind());
-          label.value = this.autoMarkerName;
-        }
+        this.hintMarkerName();
         if (!this.editingMarker && this.markerPoint)
           this.viewer?.previewPlace?.({ point: this.markerPoint, kind: this.markerKind() });
       });
@@ -1655,7 +1646,7 @@ export class ViewerControls {
       const route = this.state.routes.find((r) => r.id === this.editingRoute);
       if (route) return this.saveRoute(route);
       if (!this.markerPoint) return;
-      const label = this.input("marker-label").value.trim();
+      const label = this.markerLabel();
       if (!label) return;
       const existing = this.state.markers.find(
         (m) => m.id === this.editingMarker,

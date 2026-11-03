@@ -463,32 +463,17 @@ test("viewer controls: menu pill, panels, smart dark, layers, highlight, rotatio
     assert.equal(root.dataset.tool, "marker");
     tap(500, 600);
     assert.equal(el("marker-dialog").hasAttribute("open"), true);
-    assert.equal((el("marker-label") as HTMLInputElement).value, "Point of interest 1");
+    assert.equal((el("marker-label") as HTMLInputElement).value, "", "the name starts empty");
+    assert.equal((el("marker-label") as HTMLInputElement).placeholder, "Point of interest", "hinting the kind, with no number");
     assert.deepEqual(previews.at(-1), { point: { x: 500, y: 600 }, kind: "landmark" }, "the new pin shows where it goes");
     assert.deepEqual(reveals.at(-1), { x: 500, y: 600 }, "the map keeps the spot clear of the card");
     assert.equal(el("marker-dialog").style.getPropertyValue("--spot-y"), "300px", "and the scrim lights it");
     assert.notEqual(
       document.activeElement,
       el("marker-label"),
-      "no keyboard just to accept the prefilled name",
+      "no keyboard just to accept the hinted name",
     );
-    // The first tap on the suggestion selects it to type over; a typed name stays put.
-    const select = t.mock.method(el("marker-label") as HTMLInputElement, "select");
-    const tapLabel = () => {
-      el("marker-label").dispatchEvent(new window.Event("pointerdown"));
-      el("marker-label").dispatchEvent(new window.Event("click"));
-    };
-    tapLabel();
-    assert.equal(select.mock.callCount(), 1, "a suggested name is selected on the first tap");
-    input("marker-label", "");
-    el("marker-label").dispatchEvent(new window.Event("input"));
-    assert.equal((el("marker-save") as HTMLButtonElement).disabled, true, "Save waits for a name");
-    input("marker-label", "Point of interest 1 bis");
-    el("marker-label").dispatchEvent(new window.Event("input"));
-    assert.equal((el("marker-save") as HTMLButtonElement).disabled, false);
-    tapLabel();
-    assert.equal(select.mock.callCount(), 1, "a typed name is not selected");
-    input("marker-label", "Point of interest 1");
+    assert.equal((el("marker-save") as HTMLButtonElement).disabled, false, "the hint is enough to save");
     assert.equal(el("marker-move").hidden, true, "a new place has nothing to move yet");
     assert.equal(
       el("kind-dialog").querySelectorAll(".kind-pick .place-icon > .place-pin").length,
@@ -520,7 +505,7 @@ test("viewer controls: menu pill, panels, smart dark, layers, highlight, rotatio
     entrance.dispatchEvent(new window.Event("change"));
     assert.equal(el("kind-dialog").hasAttribute("open"), false, "picking a pin goes back to the form");
     assert.equal(el("marker-kind-current").textContent, "Entrance", "and the field shows it");
-    assert.equal((el("marker-label") as HTMLInputElement).value, "Entrance 1");
+    assert.equal((el("marker-label") as HTMLInputElement).placeholder, "Entrance", "the hint follows the kind");
     assert.deepEqual(previews.at(-1), { point: { x: 500, y: 600 }, kind: "entrance" });
     assert.equal(el("marker-dialog").style.getPropertyValue("--c"), "#7dff8a", "the card takes the chosen pin's colour");
     assert.equal(
@@ -1129,13 +1114,14 @@ test("viewer controls: menu pill, panels, smart dark, layers, highlight, rotatio
     // Up drops a place.
     hold().end({ x: 180, y: 240 });
     assert.equal(el("marker-dialog").hasAttribute("open"), true);
-    assert.equal((el("marker-label") as HTMLInputElement).value, "Entrance 1",
+    assert.equal((el("marker-label") as HTMLInputElement).placeholder, "Entrance",
       "a new place starts as the kind last added");
     assert.deepEqual(previews.at(-1), { point: { x: 2000, y: 2100 }, kind: "entrance" });
     submit("marker-form");
     assert.deepEqual(state.markers.at(-1)?.point, { x: 2000, y: 2100 });
     assert.equal(state.markers.at(-1)?.kind, "entrance");
-    assert.equal(el("toast").textContent, "Entrance 1 saved");
+    assert.equal(state.markers.at(-1)?.label, "Entrance", "an empty name saves as the hint, even if another place has it");
+    assert.equal(el("toast").textContent, "Entrance saved");
     assert.equal(el("toast-bar").dataset.tone, "done");
     t.mock.timers.tick(2300);
     assert.equal(el("toast").hidden, true, "a short one goes soon");
