@@ -21,7 +21,8 @@ import { initKeyboardInset, initTapAway } from "./ui/keyboard-inset";
 import { lockPageZoom } from "./ui/page-zoom";
 import { loadOcr } from "./storage/ocr";
 import { needsOcr, type OcrIndex } from "./ocr/index";
-import { detectMapText } from "./ocr/detect";
+import { detectMapText, ocrWorkerCount } from "./ocr/detect";
+import { ocrCrops } from "./ocr/scan";
 import { initMapRename, mapRenameMarkup } from "./ui/map-rename";
 import { showActionSheet } from "./ui/action-sheet";
 import { initSharing, sharingMarkup } from "./ui/sharing";
@@ -951,7 +952,10 @@ async function runOcr(
       },
       controller.signal,
     );
-    track("text_scanned", { ok: true, labels: index.lines.length, seconds: Math.round((Date.now() - started) / 1000) });
+    // How the scan was spread, to tell slow phones from scans that ran on too few workers.
+    const sections = ocrCrops(map.width, map.height).length;
+    track("text_scanned", { ok: true, labels: index.lines.length, seconds: Math.round((Date.now() - started) / 1000),
+      sections, workers: ocrWorkerCount(sections), cores: navigator.hardwareConcurrency || 0 });
     if (currentMap?.id === map.id) controls?.updateOcr(index);
     channel?.postMessage("changed");
     return index;
