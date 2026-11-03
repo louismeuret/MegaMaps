@@ -46,7 +46,6 @@ test("renaming persists only the name and preserves map payloads and navigation"
   const map: MapRecord = {
     id: "rename", name: "original.png", width: 512, height: 512,
     bytes: 100, backend: "indexeddb", levels: [], created: 1, status: "ready",
-    offlineVerifiedAt: 123,
   };
   await saveMap(map);
   const store = payloadStore(map.backend);
