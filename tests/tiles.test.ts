@@ -374,3 +374,33 @@ test("parent tiles are lossless PNG with an odd-width edge fully opaque", async 
     await rm(root, { recursive: true, force: true });
   }
 });
+
+test("tiles saved several at a time are all saved before the map's last row returns, and a failed save still fails the import", async () => {
+  const root = await mkdtemp(path.join(tmpdir(), "map-viewer-test-"));
+  await installPlatform(root);
+  try {
+    const width = 1600, height = 1100, row = new Uint8ClampedArray(width * 4).fill(200);
+    const saved = new Set<string>();
+    let failAt: string | undefined;
+    const store = {
+      async put(_id: string, key: string) {
+        await new Promise((resolve) => setTimeout(resolve, 2));
+        if (key === failAt) throw new Error("disk full");
+        saved.add(key);
+      },
+      get: async () => new Blob(),
+      deleteMap: async () => {},
+    };
+    const consume = tileBand({ width, height }, new OffscreenCanvas(1, 1), store, "t", () => {});
+    for (let y = 0; y < height; y++) await consume(row, y);
+    assert.equal(saved.size, Math.ceil(width / TILE_SIZE) * Math.ceil(height / TILE_SIZE), "every tile is saved once the last row is in");
+
+    failAt = tileKey(0, 1, 0);
+    const failing = tileBand({ width, height }, new OffscreenCanvas(1, 1), store, "t", () => {});
+    await assert.rejects(async () => {
+      for (let y = 0; y < height; y++) await failing(row, y);
+    }, /disk full/);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
