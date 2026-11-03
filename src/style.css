@@ -2372,11 +2372,6 @@ button.glass:active:not(:disabled) {
 .dock > :is(.open-search, .open-trail, .open-measure):active:not(:disabled) {
   background: color-mix(in srgb, var(--c) 24%, #000);
 }
-/* Trail lights up while its panel is open. */
-.dock > .open-trail[aria-expanded="true"] {
-  background: color-mix(in srgb, var(--c) 28%, #000);
-  box-shadow: inset 0 0 0 1px var(--c);
-}
 .open-trail.on-trip::after {
   content: "";
   position: absolute;
@@ -2394,7 +2389,7 @@ button.glass:active:not(:disabled) {
   --c: var(--neon-lock);
 }
 /* ---------- Add, placing and drawing ---------- */
-/* Saved and Add are solid neon buttons; each opens its panel above the pill.
+/* Saved and Add are solid neon buttons; each opens its panel in the pill's place.
    Placing, drawing or moving swaps the pill for a card with the panels'
    header (icon, title, X), a hint and full-size actions. */
 .dock > :is(.open-saved, .open-add) {
@@ -3115,7 +3110,7 @@ dialog.place-card::backdrop {
   height: 16px;
 }
 
-/* ---------- Panels: Saved above the dock, View below the top controls ---------- */
+/* ---------- Panels: Saved in the pill's place, View below the top controls ---------- */
 .sheet-dismiss {
   position: absolute;
   inset: 0;
@@ -3127,12 +3122,14 @@ dialog.place-card::backdrop {
 .sheet-dismiss:active:not(:disabled) {
   transform: none;
 }
+/* Like Measure's card, an open panel takes the pill's place, and the pill's
+   height on tall screens too. */
 .sheet {
   position: absolute;
-  bottom: calc(var(--hud-bottom) + var(--dock-h) + 8px);
+  bottom: var(--hud-bottom);
   max-height: min(
-    calc(100svh - var(--hud-top) - var(--hud-bottom) - var(--dock-h) - 16px),
-    640px
+    calc(100svh - var(--hud-top) - var(--hud-bottom) - 8px),
+    calc(640px + var(--dock-h) + 8px)
   );
   display: flex;
   flex-direction: column;
@@ -3168,7 +3165,7 @@ dialog.place-card::backdrop {
   bottom: auto;
   left: var(--edge-l);
   width: var(--surface-width);
-  max-height: calc(100svh - var(--hud-top) - var(--hud-bottom) - var(--dock-h) - 68px);
+  max-height: calc(100svh - var(--hud-top) - var(--hud-bottom) - 52px);
   /* Far from the home indicator, so no safe-area room below. */
   padding-bottom: var(--space-20);
 }

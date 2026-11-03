@@ -58,8 +58,8 @@ const dangerPicks = dangerSteps
 // Map-first layout: almost nothing floats over the map.
 //   top corners   – Back on the left; Rotation and View on the right
 //   bottom pill   – Saved · Search · Trail · Measure · Add. Search swaps
-//                   the pill for a one-row bar; the others open panels
-//                   like View, and Measure opens its task card.
+//                   the pill for a one-row bar, Measure for its task card,
+//                   and the others for panels; any open panel hides the pill.
 //                   Placing, drawing or moving swaps the pill for a task card
 //                   with the same header (icon, title, X) and full-size actions
 // Pinch and drag move the map, so there are no zoom or pan buttons.

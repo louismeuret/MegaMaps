@@ -222,7 +222,7 @@ test("viewer controls: menu pill, panels, smart dark, layers, highlight, rotatio
       "panel takes its button's color",
     );
     assert.equal(el("open-saved").getAttribute("aria-expanded"), "true");
-    assert.equal(dock.hidden, false);
+    assert.equal(dock.hidden, true, "an open panel takes the pill's place");
     // Add opens a panel like Saved, and its button stays + while it is open.
     focus.mock.resetCalls();
     click("open-add");
@@ -249,8 +249,10 @@ test("viewer controls: menu pill, panels, smart dark, layers, highlight, rotatio
     click("open-display");
     assert.equal(sheet.hidden, true);
     click("open-display");
+    assert.equal(dock.hidden, true, "top panels hide the pill too");
     click("sheet-dismiss");
     assert.equal(sheet.hidden, true);
+    assert.equal(dock.hidden, false, "closing a panel brings the pill back");
 
     // Brightness offers five persistent choices, with 85% selected by default.
     assert.equal(state.dimming, 0.85);
