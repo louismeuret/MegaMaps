@@ -65,11 +65,11 @@ const ARROW_GAP = 40;
 // Screen-space SVG keeps lines/labels legible without another raster surface.
 // Text is assigned through textContent; imported/user names never become markup.
 // Visibility is CSS-driven (svg classes) so toggling layers needs no rebuild.
-// Covers the camera glide plus two pulses (see .found in style.css).
+// Covers the camera glide plus two pulses (see .found in map.css).
 const FOUND_MS = motion.slow + 2 * motion.pulse + motion.fast;
-/** The Measure control's neon, as --neon-measure in style.css. */
+/** The Measure control's neon, as --neon-measure in app.css. */
 const MEASURE_COLOR = "#fff04d";
-/** The Trail control's neon, as --neon-trail in style.css. */
+/** The Trail control's neon, as --neon-trail in app.css. */
 const TRAIL_COLOR = "#ff2a2a";
 /** A chevron halfway along each segment long enough on screen, pointing from
  * its first point to its second. */

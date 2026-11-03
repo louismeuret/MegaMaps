@@ -11,7 +11,7 @@ const NS = "http://www.w3.org/2000/svg";
 const STIFFNESS = 320, DAMPING = 25;
 /** The casing around a closed balloon's head. */
 const CASING = 1.15;
-/** As `body` in style.css: labels are measured before they're on screen. */
+/** As `:root` in app.css: labels are measured before they're on screen. */
 const FONT = '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
 const CHIP = "#080c0c";
 /** How far the balloon's body stands off its place, along its tail, and
@@ -97,7 +97,7 @@ export class MapBalloon {
       ? `<clipPath id="map-balloon-head-${id}"><circle/></clipPath><rect class="water" clip-path="url(#map-balloon-head-${id})" fill="${waterColors[level]}"/>`
       : "";
     this.element.setAttribute("class", "map-balloon");
-    // The body pulses with its pin when the item is found (see .found in style.css).
+    // The body pulses with its pin when the item is found (see .found in map.css).
     this.element.innerHTML = `<g class="map-balloon-body"><clipPath id="map-balloon-text-${id}"><rect/></clipPath><path class="casing" fill="${PIN_CASING}" stroke="${PIN_CASING}" stroke-width="7" stroke-linejoin="round"/><path class="outline" fill="${color}" stroke="${color}" stroke-width="3" stroke-linejoin="round"/><path class="fill" fill="${CHIP}"/><circle class="head" fill="${color}"/>${water}${symbol.icon}<text clip-path="url(#map-balloon-text-${id})" font-weight="600"/></g>`;
     const part = (selector: string) => this.element.querySelector<SVGElement>(selector) ?? undefined;
     this.parts = {
