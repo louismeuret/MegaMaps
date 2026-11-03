@@ -684,3 +684,23 @@ test("the trip's current position is drawn over every place, route and tool", ()
   assert.ok(svg.lastElementChild!.classList.contains("trail-here"));
   overlay.dispose();
 });
+
+test("only a place just added pops in: opening the map and redrawing leave pins still", () => {
+  const { document } = parseHTML('<html><body><svg class="map-overlay"></svg></body></html>');
+  Object.defineProperty(globalThis, "document", { value: document, configurable: true });
+  const svg = document.querySelector<SVGSVGElement>("svg")!;
+  const state = defaultNavigation("added");
+  const place = (id: string, x: number) => ({ id, kind: "entrance" as const, label: id, description: "", point: { x, y: 300 }, created: 0 });
+  state.markers = [place("gate", 100)];
+  const overlay = new NavigationOverlay(svg);
+  const added = () => [...svg.querySelectorAll('[data-layer="places"]:not(.place-labels) .pin-body')]
+    .flatMap((pin, index) => pin.classList.contains("added") ? [state.markers[index]!.id] : []);
+  overlay.rebuild(state);
+  assert.deepEqual(added(), [], "the map opens with its places already there");
+  state.markers = [...state.markers, place("shaft", 300)];
+  overlay.rebuild(state);
+  assert.deepEqual(added(), ["shaft"]);
+  overlay.rebuild(state);
+  assert.deepEqual(added(), [], "it pops in once");
+  overlay.dispose();
+});

@@ -112,6 +112,8 @@ export class NavigationOverlay {
   /** A finished trip being looked back on. */
   private trip?: Point[];
   private state?: NavigationState;
+  /** Places drawn so far: one missing from it was just added and pops in. */
+  private placed?: Set<string>;
   constructor(private svg: SVGSVGElement) {}
   /** Highlights the route being drawn (its points become handles) or the place being moved. */
   setEditing(routeId?: string, markerId?: string) {
@@ -319,12 +321,14 @@ export class NavigationOverlay {
       if (marker.id === this.moving) element.classList.add("moving");
       else if (marker.id === this.found) element.classList.add("found");
       if (marker.id === this.selected) element.classList.add("selected");
+      if (this.placed && !this.placed.has(marker.id)) body.classList.add("added");
       this.selectable.push({ id: marker.id, element });
       placeBody(body, marker.kind, marker);
       const balloon = new MapBalloon(placeSymbol(marker), body);
       if (marker.id === this.found) balloon.element.classList.add("found");
       label(balloons, marker.label, marker.point, balloon, "places", marker.id);
     }
+    this.placed = new Set(state.markers.map((marker) => marker.id));
     // Shown even with the places layer hidden: it is what the user is adding.
     if (this.preview) {
       const preview = node("g", { class: "place-preview" });
