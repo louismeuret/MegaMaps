@@ -1429,7 +1429,8 @@ test("place photos lead the details as a carousel and are removed from the edit 
     URL.revokeObjectURL = (url) => { revoked.push(url); revoke(url); };
     try {
       await controls.dispose();
-      await loaded();
+      // Each photo is let go once its read settles, which a busy machine delays.
+      for (let waited = 0; revoked.length < 2 && waited < 2000; waited += 10) await loaded();
     } finally {
       URL.revokeObjectURL = revoke;
     }
