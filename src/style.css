@@ -1363,6 +1363,11 @@ dialog .dialog-error {
   color: var(--muted);
   font-variant-numeric: tabular-nums;
 }
+/* The percentage and time left stay on one line; a long step wraps instead. */
+.progress-info > :last-child {
+  flex: none;
+  white-space: nowrap;
+}
 
 /* Main action first and full width; the rest share the row beneath it. */
 .dialog-actions {
