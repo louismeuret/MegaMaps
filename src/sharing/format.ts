@@ -1,6 +1,4 @@
 import { t } from "../i18n";
-import { sha256 } from "@noble/hashes/sha2.js";
-import { bytesToHex } from "@noble/hashes/utils.js";
 import { MAX_FILE_BYTES, MAX_PIXELS, MAX_SIDE } from "../types";
 import { mapSize, readHeader } from "../processing/headers";
 import { readOcrIndex, type OcrIndex } from "../ocr/index";
@@ -49,6 +47,8 @@ export async function isShareFile(blob: Blob) {
 
 /** Hash bounded chunks so a large original never becomes one in-memory buffer. */
 export async function fingerprint(blob: Blob, signal?: AbortSignal) {
+  // Only sharing hashes a map, so the hash code loads then, not with the app.
+  const [{ sha256 }, { bytesToHex }] = await Promise.all([import("@noble/hashes/sha2.js"), import("@noble/hashes/utils.js")]);
   const hash = sha256.create();
   try {
     for (let offset = 0; offset < blob.size; offset += 1024 * 1024) {
