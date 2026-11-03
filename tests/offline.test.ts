@@ -263,9 +263,11 @@ test("generated service worker serves cold offline navigation, worker JS, and co
       ),
     );
     stores.values().next().value!.delete("/codecs/jpeg.wasm");
+    stores.values().next().value!.set("/ocr/pp-ocrv5-mobile-det.onnx", new Response(""));
     assert.deepEqual(
-      Array.from((await checkShell()).missing, (value) => String(value)),
-      ["/codecs/jpeg.wasm"],
+      Array.from((await checkShell()).missing, (value) => String(value)).sort(),
+      ["/codecs/jpeg.wasm", "/ocr/pp-ocrv5-mobile-det.onnx"],
+      "a missing file and an empty one both count as missing",
     );
     assert.equal((await checkShell()).ready, false);
   } finally {

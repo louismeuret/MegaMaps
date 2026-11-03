@@ -173,7 +173,9 @@ self.addEventListener('message', event => {
       const missing = [];
       for (const url of ASSETS) {
         const response = await cache.match(url);
-        if (!response || !(await response.arrayBuffer()).byteLength) missing.push(url);
+        // A blob's size needs no copy of its bytes, which for the OCR models
+        // and runtime are tens of MB: the library checks every minute.
+        if (!response || !(await response.blob()).size) missing.push(url);
       }
       event.ports[0].postMessage({ ready: missing.length === 0, missing, assets: ASSETS.length, version: CACHE });
     } catch { event.ports[0].postMessage({ ready: false, missing: ['Application shell'] }); }
