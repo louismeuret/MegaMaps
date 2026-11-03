@@ -1069,6 +1069,10 @@ async function start() {
     for (const map of await listMaps())
       if (map.status !== "ready") await deleteStoredMap(map);
   }).catch(() => {}); // Another tab may legitimately be importing; don't touch its files.
+  // Reopening on the last map skips building the library beneath it, whose
+  // previews and counts would compete with the map for storage.
+  const resume = await lastMap();
+  if (resume) home.hidden = true;
   await refresh();
   // Ask on every launch: Chrome may grant it later, once the app is installed or used more.
   if (maps.length) void protectStorage().then(showBackupReminder);
@@ -1078,9 +1082,12 @@ async function start() {
     "label-size": preference("label-size"), "update-install": preference("update-install"),
   }));
   if (import.meta.env.DEV) await restoreDevData().catch((error) => console.warn("Dev data", error));
-  const resume = await lastMap();
   const map = maps.find((map) => map.id === resume);
   if (map) await openMap(map);
+  else if (home.hidden) {
+    home.hidden = false;
+    await refresh();
+  }
   retileMaps();
   // Made while the welcome shows, so it's ready to try.
   if (!maps.length && preference("tour") !== "seen")
