@@ -25,9 +25,10 @@ When the user asks for a new release:
 
 1. Run `git fetch origin`. The newest release in `src/changelog.ts` names the last commit it covers. List what `dev` merged since then with `git log --first-parent --format='%h %s%n%b' <commit>..origin/dev`.
 2. Add a release at the top, with today's `date` and the short hash of `origin/dev` as `commit`.
-3. Sort each change users can notice into `added`, `changed` or `fixed`. Give each one short English line, most important first, merging related PRs. Only a value that changed, such as a limit or a number, reads "Thing: before → after", like "Map size limit: 300 → 600 megapixels."; describe other changes in a sentence. Leave out what users can't notice, such as docs, tests, refactors and build tooling. Omit empty lists.
-4. Add the French for each line to the "What’s new" block of `src/locales/fr.ts`.
-5. Run `npm test`, then commit as `docs: changelog for <date>`. Don't create tags or GitHub releases.
+3. Users only have what `origin/main` holds. Changelog entries whose `commit` isn't in `origin/main` (`git merge-base --is-ancestor <commit> origin/main`) haven't shipped and can still be edited. Leave out anything added and then removed since the last shipped release: drop it from those entries, and add no line saying it's gone.
+4. Sort each change users can notice into `added`, `changed` or `fixed`. Give each one short English line, most important first, merging related PRs. Only a value that changed, such as a limit or a number, reads "Thing: before → after", like "Map size limit: 300 → 600 megapixels."; describe other changes in a sentence. Leave out what users can't notice, such as docs, tests, refactors and build tooling. Omit empty lists.
+5. Add the French for each line to the "What’s new" block of `src/locales/fr.ts`.
+6. Run `npm test`, then commit as `docs: changelog for <date>`. Don't create tags or GitHub releases.
 
 ## Testing
 
