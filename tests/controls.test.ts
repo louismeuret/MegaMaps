@@ -445,11 +445,6 @@ test("viewer controls: menu pill, panels, smart dark, layers, highlight, rotatio
     click("close-sheet");
     assert.equal(el("reset-rotation").hidden, true, "reset belongs to the Rotation panel");
 
-    // Highlight with nothing saved is unavailable instead of animating.
-    assert.equal((el("spotlight") as HTMLButtonElement).disabled, true);
-    click("spotlight");
-    assert.equal(stage.classList.contains("spotlight"), false);
-
     // Places: pick Place, tap the map, save the prefilled card.
     click("open-add");
     click("add-marker");
@@ -886,13 +881,10 @@ test("viewer controls: menu pill, panels, smart dark, layers, highlight, rotatio
     assert.equal(popover(), null, "deleting closes the sheet");
     assert.equal(el("toast").textContent, "Exit plan deleted");
 
-    // Layers hide/show and the highlight briefly reveals everything.
+    // Layers hide/show.
     assert.equal(el("layer-places-count").textContent, "1");
     check("layer-places", false);
     assert.equal(state.layers.places, false);
-    click("spotlight");
-    assert.equal(stage.classList.contains("spotlight"), true);
-    assert.equal(el("spotlight").classList.contains("active"), true);
 
     // Search stays usable while OCR runs, then reveals every matching location.
     t.mock.timers.enable({ apis: ["setTimeout"] });
@@ -1215,7 +1207,6 @@ test("viewer controls: menu pill, panels, smart dark, layers, highlight, rotatio
     controls.dispose();
     await controls.flush();
   }
-  assert.equal(stage.classList.contains("spotlight"), false);
 });
 
 test("place details read long descriptions safely", async () => {

@@ -3523,9 +3523,6 @@ label.panel-row {
   height: 20px;
   color: var(--c);
 }
-.spotlight-action svg {
-  color: #ffe27a;
-}
 .panel-action:disabled {
   opacity: 0.35;
 }
@@ -3830,23 +3827,6 @@ label.panel-row {
 .map-overlay.hide-places [data-layer="places"],
 .map-overlay.hide-labels .overlay-label {
   display: none;
-}
-/* Highlight: dim the map and pulse opacity for the 4.5-second highlight window. */
-.map-stage.spotlight .map-shade {
-  opacity: 0.8;
-  transition-duration: 0.35s;
-}
-.map-stage.spotlight .map-overlay {
-  opacity: 1 !important;
-}
-.map-stage.spotlight .map-overlay [data-layer],
-.map-stage.spotlight .map-overlay .overlay-label {
-  display: inline;
-}
-.map-stage.spotlight .pin-body,
-.map-stage.spotlight .map-balloon-body,
-.map-stage.spotlight .route {
-  animation: highlight-pulse 0.8s ease-in-out 0.35s 5;
 }
 /* Jumped to from Saved: two pulses once the glide has landed. */
 .found .pin-body,

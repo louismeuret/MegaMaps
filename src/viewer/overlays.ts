@@ -361,8 +361,7 @@ export class NavigationOverlay {
     this.sortCallouts();
   }
   private visible(layer: Layer) {
-    return !!this.svg.parentElement?.classList.contains("spotlight") ||
-      !this.svg.classList.contains(`hide-${layer}`);
+    return !this.svg.classList.contains(`hide-${layer}`);
   }
   // Reserve every pin and route vertex, on screen or not, before placing any label.
   reserve(camera: Camera, layout: CalloutLayout) {
