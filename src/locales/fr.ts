@@ -574,6 +574,7 @@ export const fr = {
   "Turn the map freely with two fingers.": "Tournez la carte librement avec deux doigts.",
   "Turns after {seconds} s in the same direction.": "Tourne après {seconds} s dans la même direction.",
   "Type": "Type",
+  "unfinished": "inachevé",
   "Undo": "Annuler",
   "Unknown": "Inconnu",
   "Unsupported PNG pixel format.": "Format de pixel PNG non pris en charge.",

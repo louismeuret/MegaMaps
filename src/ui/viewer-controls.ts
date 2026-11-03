@@ -2307,7 +2307,7 @@ export class ViewerControls {
         key: route.id,
         label: route.name,
         description: route.description,
-        meta: `${travelSummary(route.points, this.state.metresPerPixel) ?? plural(route.points.length, "point")}${route.draft ? " · unfinished" : ""}`,
+        meta: `${travelSummary(route.points, this.state.metresPerPixel) ?? plural(route.points.length, "point")}${route.draft ? ` · ${t("unfinished")}` : ""}`,
         photos: route.photos,
         icon: this.routeIcon(route),
         jump: () => this.open(route, "saved"),
