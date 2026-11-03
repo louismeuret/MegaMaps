@@ -3,10 +3,10 @@ import { formatBytes, plural } from "./format";
 import { githubNote, helpLinksMarkup } from "./help";
 import { icons } from "./icons";
 import { shareOrDownload } from "./save-file";
-import { language, locale, t } from "../i18n";
+import { language, locale, t, errorMessage } from "../i18n";
 import { formatDistance } from "../viewer/measure";
 import { preference, setPreference, type Preferences } from "../preferences";
-import { backupDue, backupSummary, createBackup, readBackup, type Backup } from "../storage/backup";
+import { backupDue, backupSummary, createBackup, missingMaps, readBackup, type Backup } from "../storage/backup";
 import { listMaps } from "../storage/database";
 import { storageProtected } from "../storage/protection";
 import { storedBytes } from "../storage/usage";
@@ -70,7 +70,6 @@ interface SettingsOptions {
 type Erase = "data" | "app";
 
 const day = (date: Date | number) => new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(date);
-const errorMessage = (error: unknown) => error instanceof Error ? error.message : String(error);
 // Each step's button wakes up after a pause, so a hurried triple tap can't pass all three.
 export const ERASE_STEP_PAUSE = 800;
 /** How long Check for updates is held to turn the hidden map debug overlay on or off. */
@@ -203,9 +202,8 @@ export function initSettingsPage(page: HTMLElement, parts: { reset: HTMLElement;
   async function review(file: Blob) {
     showError();
     const parsed = await readBackup(file);
-    const present = new Set((await listMaps()).map((map) => map.id));
     const counts = backupSummary(parsed.manifest);
-    const added = parsed.manifest.maps.filter((map) => !present.has(map.id)).length;
+    const added = missingMaps(parsed.manifest, await listMaps()).length;
     const kept = counts.maps - added;
     reviewed = parsed;
     part(dialog, "restore-summary").textContent = `${t("Saved {date}", { date: day(parsed.manifest.createdAt) })}\n${[plural(counts.maps, "map"),

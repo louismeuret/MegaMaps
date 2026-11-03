@@ -226,10 +226,8 @@ export class Viewer {
     return { width: this.width, height: Math.max(1, this.height - this.covered) };
   }
   private limits(rotation = this.camera.rotation ?? 0) {
-    return {
-      min: fitCamera(this.map, this.viewport(), rotation).scale,
-      max: Math.max(4, fitCamera(this.map, this.viewport(), rotation).scale),
-    };
+    const min = fitCamera(this.map, this.viewport(), rotation).scale;
+    return { min, max: Math.max(4, min) };
   }
   private resize() {
     const viewportWidth = Math.max(1, this.canvas.clientWidth),
@@ -315,6 +313,8 @@ export class Viewer {
       const bitmap = await this.decode(blob);
       if (this.disposed || look !== this.look) bitmap.close();
       else {
+        // Toggled away and back, two decodes for this look can both land.
+        this.base?.close();
         this.base = bitmap;
         this.invalidate();
       }
@@ -400,6 +400,13 @@ export class Viewer {
     this.interactions.reset();
     this.navigation = state;
     this.overlay?.rebuild(state);
+    this.applyAppearance();
+    this.invalidate();
+  }
+  /** The look or the layers shown changed, not what is on the map: nothing
+   * is rebuilt, so a toggle stays quick on a map with many places. */
+  restyle() {
+    this.overlay?.setLayers(this.navigation.layers);
     this.applyAppearance();
     this.invalidate();
   }

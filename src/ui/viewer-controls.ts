@@ -121,7 +121,7 @@ export class ViewerControls {
     Viewer,
     "setTool" | "updateNavigation" | "jumpTo" | "fitPoints"
   > &
-    Partial<Pick<Viewer, "setMeasure" | "orient" | "straighten" | "setSearch" | "refreshLabels" | "previewPlace" | "pulse" | "reveal" | "showing" | "cover" | "select" | "showTrip" | "showView">>;
+    Partial<Pick<Viewer, "setMeasure" | "restyle" | "orient" | "straighten" | "setSearch" | "refreshLabels" | "previewPlace" | "pulse" | "reveal" | "showing" | "cover" | "select" | "showTrip" | "showView">>;
   private ocr?: OcrIndex;
   private ocrMessage = "";
   private searchMatches: MapSearchMatch[] = [];
@@ -358,9 +358,11 @@ export class ViewerControls {
     this.renderSearch();
     this.render();
   }
-  private changed() {
+  /** Saves an edit and shows it; `restyled` when only the look or the layers changed. */
+  private changed(restyled = false) {
     this.persistence.changed();
-    this.viewer?.updateNavigation(this.state);
+    if (restyled && this.viewer?.restyle) this.viewer.restyle();
+    else this.viewer?.updateNavigation(this.state);
     if (this.openSheet === "search" && !this.searchTimer) this.renderSearch();
     this.render();
   }
@@ -392,6 +394,8 @@ export class ViewerControls {
     this.state.trail.push(mark);
     this.changed();
     happened("trail_marked");
+    // With trip_ended, tells trips left running from Trail opened only to look.
+    if (this.state.trail.length === 1) track("trip_started");
     this.toast(this.state.trail.length > 1 ? t("Trail point added") : t("Trip started"), "done", () => {
       this.state.trail = this.state.trail.filter((other) => other.time !== mark.time);
       this.changed();
@@ -511,7 +515,10 @@ export class ViewerControls {
     const previous = this.openSheet;
     if (previous === "search" && name !== "search") {
       if (normalizeText(this.searchQuery)) {
-        track("search_used", { results: this.searchMatches.length, places: this.searchMatches.some((match) => match.marker) });
+        // Never the words themselves: whether the map's text was searchable and how long the
+        // search was tell a map left unscanned from text the search missed.
+        track("search_used", { results: this.searchMatches.length, places: this.searchMatches.some((match) => match.marker),
+          scanned: !!this.ocr, words: normalizeText(this.searchQuery).split(" ").length });
         this.visit.searched = true;
       }
       this.input("map-search").blur();
@@ -681,6 +688,11 @@ export class ViewerControls {
     card.style.setProperty("--spot-x", spot ? `${spot.x}px` : "");
     card.style.setProperty("--spot-y", spot ? `${spot.y}px` : "");
   }
+  /** Lets go of the photos the card showed. */
+  private releasePhotos() {
+    for (const url of this.photoURLs.values()) void url.then((url) => url && URL.revokeObjectURL(url));
+    this.photoURLs.clear();
+  }
   private photoURL(id: string) {
     let url = this.photoURLs.get(id);
     if (!url) {
@@ -703,7 +715,7 @@ export class ViewerControls {
   /** Full screen, swiping through the item's photos from the one tapped. */
   private showPhotos(ids: string[], index: number) {
     this.photoViewer ??= new PhotoViewer(this.dialog("photo-viewer"), this.controller.signal);
-    this.photoViewer.show(ids.map((id, i) => this.photoImage(id, `Photo ${i + 1} of ${ids.length}`) as HTMLImageElement), index);
+    this.photoViewer.show(ids.map((id, i) => this.photoImage(id, t("Photo {number} of {total}", { number: i + 1, total: ids.length })) as HTMLImageElement), index);
   }
   private renderFormPhotos() {
     const list = this.el("marker-photo-list"), count = this.formPhotos.length;
@@ -724,7 +736,7 @@ export class ViewerControls {
         this.renderFormPhotos();
       });
       item.append(remove);
-      return this.photoImage(id, `Photo ${index + 1} of ${count}`, item);
+      return this.photoImage(id, t("Photo {number} of {total}", { number: index + 1, total: count }), item);
     }), addItem);
     const busy = this.photoJobs > 0;
     add.disabled = busy;
@@ -1175,7 +1187,7 @@ export class ViewerControls {
       open.title = t("View full screen");
       open.append(this.root.ownerDocument.createElement("img"));
       this.on(open, "click", () => this.showPhotos(item.photos!, index));
-      return this.photoImage(id, `Photo ${index + 1} of ${count}`, open);
+      return this.photoImage(id, t("Photo {number} of {total}", { number: index + 1, total: count }), open);
     }));
     photos.hidden = !count;
     photos.scrollLeft = 0;
@@ -1342,12 +1354,12 @@ export class ViewerControls {
     this.click("sheet-dismiss", () => this.sheet(undefined));
     this.on(this.input("dark-map"), "change", () => {
       this.state.inverted = this.input("dark-map").checked;
-      this.changed();
+      this.changed(true);
     });
     for (const layer of layerNames)
       this.on(this.input(`layer-${layer}`), "change", () => {
         this.state.layers[layer] = this.input(`layer-${layer}`).checked;
-        this.changed();
+        this.changed(true);
       });
     this.click("spotlight", () => this.spotlight());
     for (const mode of manualModes) {
@@ -1391,7 +1403,7 @@ export class ViewerControls {
       this.on(input, "change", () => {
         if (!input.checked) return;
         this.state.dimming = level;
-        this.changed();
+        this.changed(true);
       });
     }
     // Reading a place, a press anywhere off the card and the map closes it; the
@@ -1654,8 +1666,7 @@ export class ViewerControls {
       this.viewingMarker = this.viewingRoute = undefined;
       this.viewer?.select?.();
       this.formVersion++;
-      for (const url of this.photoURLs.values()) void url.then((url) => url && URL.revokeObjectURL(url));
-      this.photoURLs.clear();
+      this.releasePhotos();
       if (!this.viewingTrip) this.viewer?.cover?.();
       this.viewer?.previewPlace?.();
       this.viewer?.refreshLabels?.();
@@ -2301,7 +2312,7 @@ export class ViewerControls {
         key: route.id,
         label: route.name,
         description: route.description,
-        meta: `${travelSummary(route.points, this.state.metresPerPixel) ?? plural(route.points.length, "point")}${route.draft ? " · unfinished" : ""}`,
+        meta: `${travelSummary(route.points, this.state.metresPerPixel) ?? plural(route.points.length, "point")}${route.draft ? ` · ${t("unfinished")}` : ""}`,
         photos: route.photos,
         icon: this.routeIcon(route),
         jump: () => this.open(route, "saved"),
@@ -2377,15 +2388,19 @@ export class ViewerControls {
   }
   // Keep detection status available to assistive technology while indexing;
   // a running scan also passes its progress, from 0 to 1, for the top toast.
-  updateOcr(index: OcrIndex | undefined, message = "", progress?: number) {
-    const sameIndex = this.ocr === index;
-    this.ocr = index;
+  /** `left` is the scan's estimated time left, shown beside its percentage. */
+  updateOcr(index: OcrIndex | undefined, message = "", progress?: number, left = "") {
+    // The library reloads the index from storage on each refresh: the same scan
+    // keeps the copy loaded, so search keeps its place and its cached word spans.
+    const sameIndex = this.ocr === index ||
+      (!!this.ocr && this.ocr.mapId === index?.mapId && this.ocr.completedAt === index.completedAt);
+    if (!sameIndex) this.ocr = index;
     this.ocrMessage = message;
     const toast = this.el("ocr-progress");
     toast.hidden = progress === undefined;
     if (progress !== undefined) {
       const percent = Math.floor(progress * 100);
-      this.el("ocr-percent").textContent = `${percent}%`;
+      this.el("ocr-percent").textContent = left ? `${percent}% · ${left}` : `${percent}%`;
       toast.setAttribute("aria-valuenow", String(percent));
     }
     this.renderSearch(sameIndex || !!this.searchTimer);
@@ -2434,6 +2449,8 @@ export class ViewerControls {
     const message = active
       ? stepping ? t("Match {current} of {total}", { current: this.searchPosition + 1, total: count })
         : count ? plural(count, "match")
+        // One letter searches saved places only (see searchMap).
+        : this.ocr && /^\p{L}$/u.test(normalizeText(this.searchQuery)) ? t("Keep typing to search the map’s text.")
         : this.ocr ? t("No matching text or saved places found.") : t("No matching saved places yet.")
       : t("Search map text and saved places. Drag and zoom to explore.");
     const progress = this.ocrMessage || (!this.ocr ? t("Map text isn’t searchable yet. Run text detection in the map’s Advanced settings.") : "");
@@ -2503,6 +2520,8 @@ export class ViewerControls {
     this.controller.abort();
     this.dialog("marker-dialog").close();
     this.dialog("name-dialog").close();
+    // The card's close handler went with the controller.
+    this.releasePhotos();
     return saved;
   }
 }

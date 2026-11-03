@@ -29,7 +29,6 @@ export interface MapRecord {
   importMs?: number;
   tileBytes?: number;
   decoder?: string;
-  offlineVerifiedAt?: number;
   /** The original's size, when it was too large and the map was shrunk to fit. */
   shrunkFrom?: { width: number; height: number };
   /** The example map new users get, to try things on before importing their own. */
@@ -51,6 +50,7 @@ export interface ImportProgress {
 export type WorkerReply =
   | { type: "progress"; progress: ImportProgress }
   | { type: "done"; record: MapRecord }
-  | { type: "error"; message: string };
+  /** `name` is the error's own, such as NotReadableError, so the app can explain it. */
+  | { type: "error"; message: string; name?: string };
 export const tileKey = (level: number, x: number, y: number) =>
   `${level}-${x}-${y}.png`;

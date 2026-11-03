@@ -24,9 +24,18 @@ export const CASING = PIN_CASING;
 
 // Pin containers retain their animation and position while sharing library icons.
 // The anchor is the icon's point that sits on the map point: its centre, or a teardrop's tip.
+// Each distinct icon is parsed once; a rebuild copies it for every pin, which is quicker.
+const templates = new Map<string, SVGSVGElement>();
 const pinIcon = (body: SVGGElement, markup: string, size: number, anchor = { x: size / 2, y: size / 2 }) => {
-  body.innerHTML = markup;
-  const icon = body.querySelector("svg")!;
+  let template = templates.get(markup);
+  if (!template) {
+    const holder = node("g");
+    holder.innerHTML = markup;
+    template = holder.querySelector("svg")!;
+    templates.set(markup, template);
+  }
+  const icon = template.cloneNode(true) as SVGSVGElement;
+  body.replaceChildren(icon);
   icon.setAttribute("x", String(-anchor.x));
   icon.setAttribute("y", String(-anchor.y));
   icon.setAttribute("width", String(size));
@@ -443,8 +452,11 @@ export class NavigationOverlay {
       const selected = !!markerId && markerId === this.selected;
       // A route can start on a place: a label may cover, or connect outside, all
       // the symbols on its point.
-      const own = selected ? this.anchors : [...this.anchors, ...balloons].filter(anchor =>
-        p.x >= anchor.left && p.x <= anchor.right && p.y >= anchor.top && p.y <= anchor.bottom);
+      const own = selected ? this.anchors : [];
+      if (!selected)
+        for (const list of [this.anchors, balloons])
+          for (const anchor of list)
+            if (p.x >= anchor.left && p.x <= anchor.right && p.y >= anchor.top && p.y <= anchor.bottom) own.push(anchor);
       // The selected, moving or edited item keeps its label when zoomed out.
       const lift = selected ? "selected" : priority > 0 ? "raised" : "";
       if (callout.draw(p, viewport, labels, wanted(priority), lift, own)) gliding = true;

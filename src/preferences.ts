@@ -28,7 +28,12 @@ const choices = {
 
 export type Preferences = { -readonly [K in keyof typeof choices]: (typeof choices)[K][number] };
 
+/** Choices storage refused to keep, such as when it is full: they last until the app closes. */
+const unsaved = new Map<string, string>();
+
 function stored(key: keyof Preferences) {
+  const kept = unsaved.get(key);
+  if (kept !== undefined) return kept;
   try {
     return localStorage.getItem(`megamaps:${key}`);
   } catch {
@@ -45,9 +50,20 @@ export function preference<K extends keyof Preferences>(key: K): Preferences[K] 
 
 /** Reset the app: every setting back to its default, so the welcome and the example map come back as on a new install. */
 export function resetPreferences() {
-  for (const key of Object.keys(choices)) localStorage.removeItem(`megamaps:${key}`);
+  unsaved.clear();
+  for (const key of Object.keys(choices)) {
+    try {
+      localStorage.removeItem(`megamaps:${key}`);
+    } catch {}
+  }
 }
 
+/** A choice storage refuses still applies until the app closes, rather than failing what made it. */
 export function setPreference<K extends keyof Preferences>(key: K, value: Preferences[K]) {
-  localStorage.setItem(`megamaps:${key}`, value);
+  try {
+    localStorage.setItem(`megamaps:${key}`, value);
+    unsaved.delete(key);
+  } catch {
+    unsaved.set(key, value);
+  }
 }

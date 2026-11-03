@@ -56,7 +56,7 @@ export async function importMap(
         }
         if (message.type === "error") {
           finish();
-          reject(new Error(message.message));
+          reject(Object.assign(new Error(message.message), message.name ? { name: message.name } : {}));
         }
       };
       worker.onerror = () => {

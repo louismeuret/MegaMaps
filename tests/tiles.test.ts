@@ -274,6 +274,52 @@ test("while the screen loads, the parents of its missing tiles load first, and d
   }
 });
 
+test("a screen tile that failed to read is read again on a later move, and its error shows once", async () => {
+  const canvas = createCanvas(512, 512);
+  const blob = new Blob([new Uint8Array(await canvas.encode("png"))]);
+  const root = await mkdtemp(path.join(tmpdir(), "map-viewer-retry-"));
+  await installPlatform(root);
+  let reads = 0, failures = 2;
+  const errors: string[] = [];
+  const store = {
+    async put() {},
+    async deleteMap() {},
+    async get() {
+      reads++;
+      await new Promise((resolve) => setTimeout(resolve, 1));
+      if (failures-- > 0) throw new DOMException("busy", "NotReadableError");
+      return blob;
+    },
+  };
+  const cache = new TileCache(store, "retry", () => {}, (message) => errors.push(message));
+  const screen = [{ level: 0, x: 0, y: 0 }];
+  const settle = () => new Promise((resolve) => setTimeout(resolve, 30));
+  const now = performance.now.bind(performance);
+  let later = 0;
+  performance.now = () => now() + later;
+  try {
+    cache.plan(screen);
+    await settle();
+    cache.plan(screen);
+    await settle();
+    assert.equal(reads, 1, "a move right after the failure doesn't read it again");
+    later += 4000;
+    cache.plan(screen);
+    await settle();
+    assert.equal(reads, 2);
+    later += 4000;
+    cache.plan(screen);
+    await settle();
+    assert.equal(reads, 3);
+    assert.equal(cache.complete, true, "the tile shows once a read works");
+    assert.equal(errors.length, 1);
+  } finally {
+    performance.now = now;
+    cache.dispose();
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test("shipped decoder is small and the app does not depend on a remote codec", async () => {
   const binary = await readFile(
     new URL("../public/codecs/jpeg.wasm", import.meta.url),
@@ -370,6 +416,36 @@ test("parent tiles are lossless PNG with an odd-width edge fully opaque", async 
       pixel = createCanvas(1, 1).getContext("2d");
     pixel.drawImage(image, 0, 0);
     assert.deepEqual([...pixel.getImageData(0, 0, 1, 1).data], [0x00, 0x44, 0x88, 0xff]);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("tiles saved several at a time are all saved before the map's last row returns, and a failed save still fails the import", async () => {
+  const root = await mkdtemp(path.join(tmpdir(), "map-viewer-test-"));
+  await installPlatform(root);
+  try {
+    const width = 1600, height = 1100, row = new Uint8ClampedArray(width * 4).fill(200);
+    const saved = new Set<string>();
+    let failAt: string | undefined;
+    const store = {
+      async put(_id: string, key: string) {
+        await new Promise((resolve) => setTimeout(resolve, 2));
+        if (key === failAt) throw new Error("disk full");
+        saved.add(key);
+      },
+      get: async () => new Blob(),
+      deleteMap: async () => {},
+    };
+    const consume = tileBand({ width, height }, new OffscreenCanvas(1, 1), store, "t", () => {});
+    for (let y = 0; y < height; y++) await consume(row, y);
+    assert.equal(saved.size, Math.ceil(width / TILE_SIZE) * Math.ceil(height / TILE_SIZE), "every tile is saved once the last row is in");
+
+    failAt = tileKey(0, 1, 0);
+    const failing = tileBand({ width, height }, new OffscreenCanvas(1, 1), store, "t", () => {});
+    await assert.rejects(async () => {
+      for (let y = 0; y < height; y++) await failing(row, y);
+    }, /disk full/);
   } finally {
     await rm(root, { recursive: true, force: true });
   }

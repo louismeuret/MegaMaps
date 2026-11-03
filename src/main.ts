@@ -9,7 +9,7 @@ import { Viewer } from "./viewer/viewer";
 import { registerOfflineShell } from "./pwa";
 import { findAppUpdate, installAppUpdate } from "./app-update";
 import { icons } from "./ui/icons";
-import { displayName, formatBytes, lastUsed, plural } from "./ui/format";
+import { displayName, formatBytes, lastUsed, plural, timeLeft } from "./ui/format";
 import { viewerMarkup } from "./ui/viewer-markup";
 import { ViewerControls } from "./ui/viewer-controls";
 import { loadNavigation, lastMap, setLastMap } from "./storage/navigation";
@@ -21,7 +21,8 @@ import { initKeyboardInset, initTapAway } from "./ui/keyboard-inset";
 import { lockPageZoom } from "./ui/page-zoom";
 import { loadOcr } from "./storage/ocr";
 import { needsOcr, type OcrIndex } from "./ocr/index";
-import { detectMapText } from "./ocr/detect";
+import { detectMapText, ocrWorkerCount } from "./ocr/detect";
+import { ocrCrops } from "./ocr/scan";
 import { initMapRename, mapRenameMarkup } from "./ui/map-rename";
 import { showActionSheet } from "./ui/action-sheet";
 import { initSharing, sharingMarkup } from "./ui/sharing";
@@ -30,7 +31,7 @@ import { eraseDialogMarkup, initSettingsPage, resetMarkup, restoreDialogMarkup, 
 import { backupDue, isBackupFile, restoreBackup, type Backup } from "./storage/backup";
 import { loadSetting } from "./storage/settings";
 import { protectStorage, storageProtected } from "./storage/protection";
-import { language, locale, t } from "./i18n";
+import { language, locale, t, errorMessage } from "./i18n";
 import { preference, resetPreferences, setPreference } from "./preferences";
 import { importAnnotations, importNewCopy } from "./sharing/storage";
 import { isShareFile } from "./sharing/format";
@@ -80,6 +81,8 @@ let ocrJob:
       controller: AbortController;
       message: string;
       fraction: number;
+      /** Roughly how long the scan has left, once it can tell. */
+      left: string;
       done: Promise<void>;
     }
   | undefined;
@@ -179,17 +182,17 @@ const openRenameMap = initMapRename(
     await refresh();
   },
 );
-function showMessage(title: string, message: string, problem = false) {
+function showMessage(title: string, message: string, problem = false, detail = message) {
   element("message-title").textContent = title;
   element("message-body").textContent = message;
   const report = element<HTMLAnchorElement>("message-report");
   report.hidden = !problem;
-  if (problem) help.report(report, { title, error: message });
+  if (problem) help.report(report, { title, error: detail });
   if (!messageDialog.open) showDialog(messageDialog);
 }
-// Something went wrong: say what, and offer to report it with the details filled in.
+// Something went wrong: say what, and offer to report it with the browser's own words filled in.
 const showError = (title: string, error: unknown) =>
-  showMessage(title, error instanceof Error ? error.message : String(error), true);
+  showMessage(title, errorMessage(error), true, failure(error));
 // Ask before downloading; keep the current map/session and wait for durable saves before reloading.
 const updates = initUpdateDialog(element<HTMLDialogElement>("update-dialog"), {
   currentRelease: Number.isFinite(loadedRelease.getTime()) ? loadedRelease : undefined,
@@ -273,23 +276,19 @@ async function shareMap(map: MapRecord, item?: { kind: "marker" | "route"; id: s
   }
 }
 // An origin-wide lock prevents launch cleanup from racing another tab's import.
-// Recutting maps steps aside for any change and resumes after it.
-async function mutate<T>(work: () => Promise<T>): Promise<T> {
+// Recutting maps steps aside for any change and resumes after it. With `wait`,
+// work another window holds storage for waits its turn, until it is cancelled.
+async function mutate<T>(work: () => Promise<T>, wait?: { signal: AbortSignal; waiting: () => void }): Promise<T> {
   await stopRetiling();
   try {
-    if (navigator.locks)
-      return await navigator.locks.request(
-        "map-viewer-storage",
-        { ifAvailable: true },
-        (lock) => {
-          if (!lock)
-            throw new Error(
-              t("Mega Maps is preparing a map in another window. Let it finish first."),
-            );
-          return work();
-        },
-      );
-    return await work();
+    if (!navigator.locks) return await work();
+    const held = await navigator.locks.request("map-viewer-storage", { ifAvailable: true },
+      async (lock) => lock ? { result: await work() } : undefined);
+    if (held) return held.result;
+    if (!wait)
+      throw new Error(t("Mega Maps is preparing a map in another window. Let it finish first."));
+    wait.waiting();
+    return await navigator.locks.request("map-viewer-storage", { signal: wait.signal }, work);
   } finally {
     retileMaps();
   }
@@ -452,6 +451,7 @@ async function refresh() {
               index,
               job?.message ?? ocrErrors.get(updated.id),
               job?.fraction,
+              job?.left,
             );
         })
         .catch(() => {});
@@ -567,19 +567,26 @@ async function refresh() {
     );
     grid.append(card);
     const showThumbnail = async (url: string) => {
-      const inverted = await navigation.then((state) => state.inverted, () => false);
-      const filter = inverted ? await darkFilter(map.id, url) : "";
-      if (version !== renderVersion) return;
-      shownFilters.set(map.id, filter);
       const img = new Image();
-      img.style.filter = filter;
       img.src = url;
       img.alt = "";
       img.loading = "lazy";
       // A dragged thumbnail would carry its image as a file, and dropped back
       // on the library it would import as a new map.
       img.draggable = false;
-      card.querySelector(".thumbnail")!.prepend(img);
+      // A preview shown before keeps its look at once, so coming home doesn't
+      // flash placeholders while the map's settings are read again.
+      const known = shownFilters.get(map.id);
+      if (known !== undefined) {
+        img.style.filter = known;
+        card.querySelector(".thumbnail")!.prepend(img);
+      }
+      const inverted = await navigation.then((state) => state.inverted, () => false);
+      const filter = inverted ? await darkFilter(map.id, url) : "";
+      if (version !== renderVersion) return;
+      shownFilters.set(map.id, filter);
+      img.style.filter = filter;
+      if (!img.isConnected) card.querySelector(".thumbnail")!.prepend(img);
     };
     const cached = thumbnails.get(map.id);
     if (cached) {
@@ -697,7 +704,7 @@ function importImage(file: File) {
       file,
       (progress) => showProgress(progress.fraction * 100, progress.message),
       controller.signal,
-    ),
+    ), { signal: controller.signal, waiting: () => showProgress(0, t("Waiting for Mega Maps to finish in another window…")) },
   )
     .then(async (map) => {
       track("map_imported", { ok: true, ...kind, megapixels: Math.round(map.width * map.height / 1e6), shrunk: !!map.shrunkFrom, seconds: Math.round((Date.now() - started) / 1000) });
@@ -720,10 +727,15 @@ function importImage(file: File) {
 }
 // The tab title carries the percentage too, for imports left in the background.
 // Rounded down, so 100% only shows once the work is done.
+// When the shown task started, for its estimate; a task starting over resets it.
+let progressStarted = 0, lastPercent = 0;
 function showProgress(percent: number, message: string) {
   const rounded = Math.floor(percent);
+  if (percent <= 0 || percent < lastPercent) progressStarted = performance.now();
+  lastPercent = percent;
+  const left = timeLeft(percent / 100, performance.now() - progressStarted);
   element("progress-fill").style.width = `${percent}%`;
-  element("progress-percent").textContent = `${rounded}%`;
+  element("progress-percent").textContent = left ? `${rounded}% · ${left}` : `${rounded}%`;
   element("progress-track").setAttribute("aria-valuenow", String(rounded));
   element("progress-message").textContent = message;
   document.title = `${rounded}% · ${appTitle}`;
@@ -910,6 +922,7 @@ async function runOcr(
     controller,
     message: t("Starting local text detection…"),
     fraction: 0,
+    left: "",
     done,
   };
   ocrJob = job;
@@ -917,9 +930,9 @@ async function runOcr(
   if (retiling?.mapId === map.id) await stopRetiling();
   const update = () => {
     if (currentMap?.id === map.id)
-      controls?.updateOcr(previous, job.message, job.fraction);
+      controls?.updateOcr(previous, job.message, job.fraction, job.left);
     if (selectedMap?.id === map.id) {
-      element("ocr-status").textContent = job.message;
+      element("ocr-status").textContent = job.left ? `${job.message} · ${job.left}` : job.message;
       element<HTMLButtonElement>("rerun-ocr").disabled = true;
       element("stop-ocr").hidden = false;
     }
@@ -933,19 +946,25 @@ async function runOcr(
       (progress) => {
         job.message = progress.message;
         job.fraction = progress.fraction;
+        job.left = timeLeft(progress.fraction, Date.now() - started);
         update();
         onProgress(progress);
       },
       controller.signal,
     );
-    track("text_scanned", { ok: true, labels: index.lines.length, seconds: Math.round((Date.now() - started) / 1000) });
+    // How the scan was spread, to tell slow phones from scans that ran on too few workers.
+    const sections = ocrCrops(map.width, map.height).length;
+    track("text_scanned", { ok: true, labels: index.lines.length, seconds: Math.round((Date.now() - started) / 1000),
+      sections, workers: ocrWorkerCount(sections), cores: navigator.hardwareConcurrency || 0 });
     if (currentMap?.id === map.id) controls?.updateOcr(index);
     channel?.postMessage("changed");
     return index;
   } catch (error) {
     track("text_scanned", { ok: false, ...controller.signal.aborted ? { stopped: true } : { error: failure(error) } });
+    // A full device fails the save at the end; rerunning wouldn't help until there's room.
     const message = controller.signal.aborted
       ? t("Text detection stopped. Rerun it in Advanced settings.")
+      : error instanceof Error && error.name === "QuotaExceededError" ? errorMessage(error)
       : t("Text detection failed. Rerun it in Advanced settings.");
     ocrErrors.set(map.id, message);
     if (currentMap?.id === map.id) controls?.updateOcr(previous, message);
@@ -1001,13 +1020,13 @@ async function prepareMapSearch(map: MapRecord, version: number) {
     const index = await loadOcr(map.id);
     if (version !== openVersion) return;
     const job = ocrJob?.mapId === map.id ? ocrJob : undefined;
-    controls?.updateOcr(index, job?.message ?? ocrErrors.get(map.id), job?.fraction);
+    controls?.updateOcr(index, job?.message ?? ocrErrors.get(map.id), job?.fraction, job?.left);
     if (index && needsOcr(index) && !job) offerTextDetection(map, true);
   } catch (error) {
     if (version === openVersion && !ocrErrors.has(map.id))
       controls?.updateOcr(
         undefined,
-        t("{error} Retry in the map’s Advanced settings.", { error: String(error) }),
+        t("{error} Retry in the map’s Advanced settings.", { error: errorMessage(error) }),
       );
   }
 }
@@ -1022,7 +1041,7 @@ async function renderOcrSettings() {
   const running = ocrJob?.mapId === map.id;
   element("advanced-map-name").textContent = displayName(map.name);
   element("ocr-status").textContent = running
-    ? ocrJob!.message
+    ? ocrJob!.left ? `${ocrJob!.message} · ${ocrJob!.left}` : ocrJob!.message
     : (ocrErrors.get(map.id) ??
       (index
         ? `${plural(index.lines.length, "detected label")}\n${t("Last scanned {date}", { date: new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" }).format(index.completedAt) })}`
@@ -1062,6 +1081,10 @@ async function start() {
     for (const map of await listMaps())
       if (map.status !== "ready") await deleteStoredMap(map);
   }).catch(() => {}); // Another tab may legitimately be importing; don't touch its files.
+  // Reopening on the last map skips building the library beneath it, whose
+  // previews and counts would compete with the map for storage.
+  const resume = await lastMap();
+  if (resume) home.hidden = true;
   await refresh();
   // Ask on every launch: Chrome may grant it later, once the app is installed or used more.
   if (maps.length) void protectStorage().then(showBackupReminder);
@@ -1071,9 +1094,12 @@ async function start() {
     "label-size": preference("label-size"), "update-install": preference("update-install"),
   }));
   if (import.meta.env.DEV) await restoreDevData().catch((error) => console.warn("Dev data", error));
-  const resume = await lastMap();
   const map = maps.find((map) => map.id === resume);
   if (map) await openMap(map);
+  else if (home.hidden) {
+    home.hidden = false;
+    await refresh();
+  }
   retileMaps();
   // Made while the welcome shows, so it's ready to try.
   if (!maps.length && preference("tour") !== "seen")
