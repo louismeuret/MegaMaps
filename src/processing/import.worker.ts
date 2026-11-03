@@ -17,7 +17,7 @@ import { tileBand, buildParents } from "./tiles";
 const reply = (message: WorkerReply) => postMessage(message);
 // A failed promise nothing waits on would otherwise leave the import waiting forever.
 onunhandledrejection = ({ reason }) =>
-  reply({ type: "error", message: reason instanceof Error ? reason.message : String(reason) });
+  reply({ type: "error", message: reason instanceof Error ? reason.message : String(reason), name: reason?.name });
 onmessage = async (event: MessageEvent<{ file: File; record: MapRecord }>) => {
   const { file, record } = event.data;
   const start = performance.now();
@@ -142,6 +142,7 @@ onmessage = async (event: MessageEvent<{ file: File; record: MapRecord }>) => {
       message: /quota|disk|space/i.test(message)
         ? t("Not enough device storage. Delete a map or free space and try again.")
         : message,
+      ...(error instanceof Error ? { name: error.name } : {}),
     });
   }
 };

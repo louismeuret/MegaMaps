@@ -51,6 +51,7 @@ export interface ImportProgress {
 export type WorkerReply =
   | { type: "progress"; progress: ImportProgress }
   | { type: "done"; record: MapRecord }
-  | { type: "error"; message: string };
+  /** `name` is the error's own, such as NotReadableError, so the app can explain it. */
+  | { type: "error"; message: string; name?: string };
 export const tileKey = (level: number, x: number, y: number) =>
   `${level}-${x}-${y}.png`;
