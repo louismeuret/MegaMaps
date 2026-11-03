@@ -26,6 +26,8 @@ export interface BackupMap {
   created: number;
   opened?: number;
   fingerprint?: string;
+  /** The example map stays the example on the device it is restored to. */
+  example?: true;
   image: { type: string; bytes: number };
   navigation: NavigationState;
   ocr?: OcrIndex;
@@ -91,6 +93,7 @@ export async function createBackup(now = new Date()) {
       id: map.id, name: map.name, created: map.created,
       ...(map.opened ? { opened: map.opened } : {}),
       ...(map.fingerprint ? { fingerprint: map.fingerprint } : {}),
+      ...(map.example ? { example: true as const } : {}),
       image: { type: `image/${(await readHeader(original)).format}`, bytes: original.size },
       navigation, ...(ocr ? { ocr } : {}),
       photos: [...photos].map(([id, blob]) => ({ id, type: blob.type || "image/jpeg", bytes: blob.size })),
@@ -150,6 +153,7 @@ function validateMap(value: unknown): BackupMap {
     id: value.id, name: value.name, created: value.created,
     ...(value.opened !== undefined ? { opened: value.opened } : {}),
     ...(value.fingerprint !== undefined ? { fingerprint: value.fingerprint as string } : {}),
+    ...(value.example === true ? { example: true as const } : {}),
     image: { type: String(image.type), bytes: image.bytes },
     navigation: normalizeNavigation({ ...(navigation as unknown as NavigationState), mapId: value.id }),
     ...(ocr ? { ocr: { ...ocr, mapId: value.id } } : {}),
@@ -201,7 +205,8 @@ async function commitRestored(map: MapRecord, entry: BackupMap, photos: Map<stri
     const tx = db.transaction(["maps", "navigation", "ocr", "photos"], "readwrite");
     tx.objectStore("maps").put({ ...map, name: entry.name, created: entry.created,
       ...(entry.opened ? { opened: entry.opened } : {}),
-      ...(entry.fingerprint ? { fingerprint: entry.fingerprint } : {}) });
+      ...(entry.fingerprint ? { fingerprint: entry.fingerprint } : {}),
+      ...(entry.example ? { example: true } : {}) });
     tx.objectStore("navigation").put({ ...entry.navigation, mapId: map.id });
     if (entry.ocr) tx.objectStore("ocr").put({ ...entry.ocr, mapId: map.id });
     putPhotos(tx, map.id, copies);
@@ -210,13 +215,19 @@ async function commitRestored(map: MapRecord, entry: BackupMap, photos: Map<stri
   });
 }
 
+/** The backup's maps this device doesn't have. A device holds one example map,
+ * so the backup's is left out where there is one. */
+export function missingMaps(manifest: BackupManifest, maps: { id: string; example?: true }[]) {
+  const present = new Set(maps.map((map) => map.id)), hasExample = maps.some((map) => map.example);
+  return manifest.maps.filter((map) => !present.has(map.id) && !(map.example && hasExample));
+}
+
 /** Adds the backup's maps this device doesn't have; maps already here are left as they are. */
 export async function restoreBackup(
   backup: Backup, onProgress: (progress: ImportProgress) => void, signal: AbortSignal,
   create: typeof importMap = importMap,
 ) {
-  const present = new Set((await listMaps()).map((map) => map.id));
-  const missing = backup.manifest.maps.filter((map) => !present.has(map.id));
+  const missing = missingMaps(backup.manifest, await listMaps());
   let added = 0;
   for (const entry of missing) {
     signal.throwIfAborted();

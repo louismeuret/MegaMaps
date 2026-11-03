@@ -75,6 +75,27 @@ test("a backup restores every map's places, routes, photos, view and text detect
   assert.equal(rebuilt.length, 2);
 });
 
+test("the example map comes back as the example, and only where there is none", async () => {
+  for (const map of await listMaps()) await deleteStoredMap(map);
+  await saveMap({ ...record("example", "Example quarry"), example: true });
+  await payloadStore("indexeddb").put("example", "original", image("example"));
+  await saveMap(record("own", "Own quarry"));
+  await payloadStore("indexeddb").put("own", "original", image("own"));
+  const backup = await readBackup((await createBackup()).file);
+
+  // This device made its own example, under another id.
+  for (const map of await listMaps()) await deleteStoredMap(map);
+  await saveMap({ ...record("local-example", "Example quarry"), example: true });
+  assert.deepEqual(await restoreBackup(backup, () => {}, new AbortController().signal, create), { added: 1, kept: 1 });
+  assert.deepEqual((await listMaps()).map(({ id, example }) => ({ id, example })).sort((a, b) => a.id.localeCompare(b.id)),
+    [{ id: "local-example", example: true }, { id: "own", example: undefined }]);
+
+  for (const map of await listMaps()) await deleteStoredMap(map);
+  await restoreBackup(backup, () => {}, new AbortController().signal, create);
+  assert.equal((await listMaps()).find((map) => map.id === "example")?.example, true);
+  for (const map of await listMaps()) await deleteStoredMap(map);
+});
+
 test("an in-memory copy keeps every byte and the type of a large picked file", async () => {
   const bytes = new Uint8Array(9 * 1024 * 1024 + 5).map((_, index) => index % 251);
   const copy = await inMemory(new File([bytes], "map.jpg", { type: "image/jpeg" }).slice(3, bytes.length, "image/jpeg"));
