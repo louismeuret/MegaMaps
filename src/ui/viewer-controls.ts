@@ -513,7 +513,10 @@ export class ViewerControls {
     const previous = this.openSheet;
     if (previous === "search" && name !== "search") {
       if (normalizeText(this.searchQuery)) {
-        track("search_used", { results: this.searchMatches.length, places: this.searchMatches.some((match) => match.marker) });
+        // Never the words themselves: whether the map's text was searchable and how long the
+        // search was tell a map left unscanned from text the search missed.
+        track("search_used", { results: this.searchMatches.length, places: this.searchMatches.some((match) => match.marker),
+          scanned: !!this.ocr, words: normalizeText(this.searchQuery).split(" ").length });
         this.visit.searched = true;
       }
       this.input("map-search").blur();
