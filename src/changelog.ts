@@ -14,12 +14,35 @@ export type Release = {
 /** Newest first. */
 export const changelog: Release[] = [
   {
+    date: "2026-11-03",
+    commit: "7a030a9",
+    added: [
+      "Text detection and map preparation show roughly how long is left.",
+      "Search finds words in any order.",
+      "Settings has a What’s new row with the changes in every version.",
+      "Ask a question, suggest a feature or report a problem from Settings; error messages offer to report the problem.",
+    ],
+    changed: [
+      "Imports and text detection are faster, and search keeps up on maps with lots of text.",
+      "Delete everything becomes Reset: delete all data, or also put every setting back to its default.",
+      "Errors such as an unreadable file, a full device or a PDF say what to do, in the app’s language.",
+      "Once you have a map of your own, the app offers to remove the example.",
+      "Empty Saved lists say how to add a place or a route.",
+      "The Highlight saved button is gone.",
+    ],
+    fixed: [
+      "The page behind a dialog no longer scrolls.",
+      "A part of the map that failed to load is loaded again instead of staying blank.",
+      "Map previews no longer flash when you come back to the main menu.",
+      "The plane icon turns lime when the app is ready offline.",
+      "Photo descriptions and unfinished routes are in French too.",
+    ],
+  },
+  {
     date: "2026-11-01",
     commit: "33409c4",
     added: [
-      "Getting started and animated tutorials show where to tap, on a real map.",
       "An example map, Val Moulin, to try the app without importing anything.",
-      "A “Need help?” box above the bottom bar.",
     ],
     changed: [
       "Map size limit: 300 → 600 megapixels.",
