@@ -32,6 +32,9 @@
   --motion-base: 250ms;
   --motion-slow: 400ms;
   --motion-pulse: 1s;
+  /* Where the field being typed in sits. Until the keyboard has been measured,
+     about where it will be. */
+  --above-keyboard: calc(var(--keyboard-inset, 50dvh) + 8px);
   /* Where the map's bottom surfaces rise from. */
   --rise-from: translateY(16px) scale(0.98);
   --header-line-height: 28px;
@@ -151,6 +154,7 @@
     opacity var(--motion-fast) var(--ease-in),
     transform var(--motion-fast) var(--ease-in),
     border-color var(--motion-fast),
+    bottom var(--motion-fast),
     display var(--motion-fast) allow-discrete;
   &:not([hidden]) {
     transition-duration: var(--motion-base);
@@ -350,7 +354,7 @@
     max-width: var(--surface-width);
     left: var(--edge-l);
     right: var(--edge-r);
-    max-height: calc(100dvh - 24px - env(safe-area-inset-top) - env(safe-area-inset-bottom) - var(--keyboard-inset, 0px));
+    max-height: calc(100dvh - 24px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
     margin: auto;
     padding: var(--surface-padding);
     overflow-y: auto;
@@ -399,8 +403,7 @@
   @media (max-width: 599px) {
     dialog {
       --enter-from: translateY(32px) scale(0.98);
-      /* With the keyboard up, sit just above it rather than under it. */
-      margin-bottom: max(12px + var(--keyboard-inset, 0px), env(safe-area-inset-bottom));
+      margin-bottom: max(12px, env(safe-area-inset-bottom));
     }
   }
   /* Native scroll indicators appear only when content overflows. */
@@ -429,6 +432,30 @@
 }
 
 /* Everything arrives the same way: faded out, at its own --enter-from. */
+/* The field being typed in, in a bar just above the keyboard. Nothing else moves
+   for the keyboard, so this bar is what shows of a form while typing. */
+[data-typing] {
+  --enter-from: var(--rise-from);
+  position: fixed;
+  z-index: 30;
+  left: var(--edge-l);
+  right: var(--edge-r);
+  bottom: var(--above-keyboard);
+  width: var(--surface-width);
+  margin: 0 auto;
+  padding: 12px;
+  background: var(--bg);
+  border: 1px solid color-mix(in srgb, var(--accent, var(--neon-view)) 45%, transparent);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-dialog);
+  animation: var(--animate-enter);
+  transition: bottom var(--motion-fast);
+}
+/* Notes grow with the text, up to what the room above the keyboard allows. */
+[data-typing] textarea {
+  max-height: calc(5lh + 2 * 12px + 2px);
+}
+
 @keyframes tap {
   0% {
     opacity: 0;

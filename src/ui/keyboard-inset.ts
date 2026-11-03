@@ -1,7 +1,10 @@
+import { motion, reducedMotion } from "./motion";
+
 type VisibleArea = Pick<VisualViewport, "height" | "offsetTop">;
 
+// A date opens a picker, not a keyboard.
 const nonTextInputs = new Set([
-  "button", "checkbox", "color", "file", "hidden", "image", "radio", "range", "reset", "submit",
+  "button", "checkbox", "color", "date", "file", "hidden", "image", "radio", "range", "reset", "submit",
 ]);
 
 // How much of the layout viewport's bottom edge is hidden below the visible area.
@@ -17,22 +20,26 @@ export function isTextEntry(element: Element | null) {
   return (element as HTMLElement).isContentEditable === true;
 }
 
-// Phone keyboards cover the page instead of resizing it, so controls pinned to
-// the bottom (the search pill, dialogs on phones) end up under the keyboard.
-// While a text field has focus, publish the covered height as --keyboard-inset
-// so the CSS can lift those controls into view.
+// Phone keyboards cover the page instead of resizing it, and the page stays as
+// it is: only the field being typed in moves, just above the keyboard. Publish
+// the covered height as --keyboard-inset for it. It outlives the keyboard, so
+// the next field goes straight to its place while the keyboard is still rising.
 export function initKeyboardInset(root = document.documentElement) {
   const viewport = window.visualViewport;
   if (!viewport) return;
-  let frame = 0, shown: number | undefined;
+  let frame = 0, shown = 0, open = false;
   const update = () => {
     cancelAnimationFrame(frame);
     frame = requestAnimationFrame(() => {
-      const inset = isTextEntry(document.activeElement)
-        ? keyboardInset(root.clientHeight, viewport)
-        : 0;
+      const field = document.activeElement as HTMLElement | null;
+      const typing = isTextEntry(field);
+      const covered = keyboardInset(root.clientHeight, { height: viewport.height, offsetTop: 0 });
+      // Android's Back puts the keyboard away but leaves the field focused.
+      if (typing && open && !covered) field!.blur();
+      open = typing && covered > 0;
+      const inset = keyboardInset(root.clientHeight, viewport);
       // Set on the root, it can restyle the whole page; scrolling sends the same value over and over.
-      if (inset === shown) return;
+      if (!typing || !inset || inset === shown) return;
       shown = inset;
       root.style.setProperty("--keyboard-inset", `${inset}px`);
     });
@@ -41,6 +48,43 @@ export function initKeyboardInset(root = document.documentElement) {
   viewport.addEventListener("scroll", update);
   document.addEventListener("focusin", update);
   document.addEventListener("focusout", update);
+}
+
+// Within `scope`, a field's label moves to the bar above the keyboard as it takes
+// focus. That has to happen at once: a field left low on the screen makes the
+// browser pan the whole page to reveal it. A blank copy holds its place in the
+// form, and it glides back when typing ends.
+export function initFieldLift(scope: string, doc = document, touch = () => matchMedia("(pointer: coarse)").matches) {
+  let lifted: { label: HTMLElement; slot: HTMLElement } | undefined;
+  const drop = () => {
+    if (!lifted) return;
+    const { label, slot } = lifted;
+    lifted = undefined;
+    const from = label.getBoundingClientRect().top;
+    label.removeAttribute("data-typing");
+    slot.remove();
+    if (reducedMotion()) return;
+    const distance = from - label.getBoundingClientRect().top;
+    const easing = getComputedStyle(label).getPropertyValue("--ease-in");
+    label.animate({ transform: [`translateY(${distance}px)`, "none"] }, { duration: motion.fast, easing });
+  };
+  doc.addEventListener("focusout", drop);
+  doc.addEventListener("focusin", (event) => {
+    drop();
+    const field = event.target as HTMLElement;
+    const label = field.closest("label");
+    if (!isTextEntry(field) || !label || !field.closest(scope) || !touch()) return;
+    // A dialog still rising would carry a fixed field along with it.
+    for (const rise of label.closest("dialog")?.getAnimations() ?? [])
+      if ((rise as CSSTransition).transitionProperty === "transform") rise.finish();
+    const slot = label.cloneNode() as HTMLElement;
+    slot.removeAttribute("id");
+    slot.style.height = `${label.offsetHeight}px`;
+    slot.style.visibility = "hidden";
+    label.after(slot);
+    label.setAttribute("data-typing", "");
+    lifted = { label, slot };
+  });
 }
 
 const controls = "input, textarea, select, button, label, a";

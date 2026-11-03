@@ -16,7 +16,7 @@
   class="fixed inset-0 z-10 animate-enter overscroll-none bg-black text-body select-none
     [--c:var(--accent)] [--dock-h:54px] [--tool-row-h:64px]
     [--hud-top:max(12px,calc(env(safe-area-inset-top)+2px))]
-    [--hud-bottom:max(12px+var(--keyboard-inset,0px),calc(env(safe-area-inset-bottom)-12px))]">
+    [--hud-bottom:max(12px,calc(env(safe-area-inset-bottom)-12px))]">
   <!-- The map is the only filtered raster surface. All tools stay in screen space. -->
   <div id="map-stage" class="absolute inset-0 overflow-hidden rounded-t-sm bg-black">
     <!-- svelte-ignore a11y_no_interactive_element_to_noninteractive_role -->
