@@ -670,6 +670,8 @@ export const fr = {
   "{removed} removed · {added} added.": "{removed} retirés · {added} ajoutés.",
   "{restored} of {total} maps were restored before this problem: {reason}": "{restored} cartes sur {total} ont été restaurées avant ce problème : {reason}",
   "{size} GB": "{size} Go",
+  "{seconds} s left": "encore {seconds} s",
+  "{minutes} min left": "encore {minutes} min",
   "{size} KB": "{size} Ko",
   "{size} MB": "{size} Mo",
   "{speed} km/h": "{speed} km/h",

@@ -9,7 +9,7 @@ import { Viewer } from "./viewer/viewer";
 import { registerOfflineShell } from "./pwa";
 import { findAppUpdate, installAppUpdate } from "./app-update";
 import { icons } from "./ui/icons";
-import { displayName, formatBytes, lastUsed, plural } from "./ui/format";
+import { displayName, formatBytes, lastUsed, plural, timeLeft } from "./ui/format";
 import { viewerMarkup } from "./ui/viewer-markup";
 import { ViewerControls } from "./ui/viewer-controls";
 import { loadNavigation, lastMap, setLastMap } from "./storage/navigation";
@@ -727,10 +727,15 @@ function importImage(file: File) {
 }
 // The tab title carries the percentage too, for imports left in the background.
 // Rounded down, so 100% only shows once the work is done.
+// When the shown task started, for its estimate; a task starting over resets it.
+let progressStarted = 0, lastPercent = 0;
 function showProgress(percent: number, message: string) {
   const rounded = Math.floor(percent);
+  if (percent <= 0 || percent < lastPercent) progressStarted = performance.now();
+  lastPercent = percent;
+  const left = timeLeft(percent / 100, performance.now() - progressStarted);
   element("progress-fill").style.width = `${percent}%`;
-  element("progress-percent").textContent = `${rounded}%`;
+  element("progress-percent").textContent = left ? `${rounded}% · ${left}` : `${rounded}%`;
   element("progress-track").setAttribute("aria-valuenow", String(rounded));
   element("progress-message").textContent = message;
   document.title = `${rounded}% · ${appTitle}`;
