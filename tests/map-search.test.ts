@@ -25,6 +25,8 @@ test("combined search includes all saved place kinds, notes, and text without co
   assert.equal(searchMap(index, places, "suppl")[0]!.marker?.id, "camp");
   assert.deepEqual(searchMap(index, places, "   "), []);
   assert.deepEqual(searchMap(index, places, "unknown"), []);
+  assert.deepEqual(searchMap(undefined, places, "supplies camp").map(match => match.marker?.id), ["camp"],
+    "a place's words match in any order, its name and notes together");
 });
 
 test("combined search never limits matches and uses the latest edited place data", () => {

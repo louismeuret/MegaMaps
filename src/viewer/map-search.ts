@@ -1,4 +1,4 @@
-import { findText, normalizeText, searchOcr, type OcrIndex, type OcrMatch } from "../ocr/index";
+import { findText, findWords, normalizeText, searchOcr, type OcrIndex, type OcrMatch } from "../ocr/index";
 import type { Point } from "./camera";
 import type { MapMarker } from "./navigation";
 
@@ -12,9 +12,10 @@ export function searchMap(index: OcrIndex | undefined, markers: MapMarker[], que
   if (terms) return pairUp(index, terms.map(term => searchMap(index, markers, term)) as [MapSearchMatch[], MapSearchMatch[]]);
   const normalized = normalizeText(query);
   if (!normalized) return [];
-  const places = markers.filter(marker =>
-    findText(normalizeText(`${marker.label} ${marker.description}`), normalized).length,
-  ).map(marker => ({ text: marker.label, polygons: [], marker }));
+  const places = markers.filter(marker => {
+    const text = normalizeText(`${marker.label} ${marker.description}`);
+    return findText(text, normalized).length || !!findWords(text, normalized);
+  }).map(marker => ({ text: marker.label, polygons: [], marker }));
   return [...places, ...searchOcr(index, query)];
 }
 

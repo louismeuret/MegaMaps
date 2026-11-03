@@ -74,8 +74,25 @@ export function findText(text: string, needle: string) {
   return offsets;
 }
 
+/** Where each of the needle's words is in the text, in any order; undefined
+ * when one is missing. "25 allée" finds "Allée 25". */
+export function findWords(text: string, needle: string) {
+  const found = needle.split(" ").map((word) => ({ length: word.length, offsets: findText(text, word) }));
+  return found.every((word) => word.offsets.length) ? found : undefined;
+}
+
 // Phrase matches highlight just the matching words, including partial-word
 // queries, but carry the whole line so the callout reads in context.
+/** A line's words, normalized, with where each sits in the line's text. */
+function wordSpans(line: OcrLine) {
+  let cursor = 0;
+  return line.words.map((word) => {
+    const text = normalizeText(word.text);
+    const start = cursor;
+    cursor += text.length + 1;
+    return { word, text, start, end: cursor - 1 };
+  });
+}
 export function searchOcr(
   index: OcrIndex | undefined,
   query: string,
@@ -84,13 +101,7 @@ export function searchOcr(
   if (!index || !needle) return [];
   const matches: OcrMatch[] = [];
   for (const line of index.lines) {
-    let cursor = 0;
-    const spans = line.words.map((word) => {
-      const text = normalizeText(word.text);
-      const start = cursor;
-      cursor += text.length + 1;
-      return { word, text, start, end: cursor - 1 };
-    });
+    const spans = wordSpans(line);
     const text = spans.map((span) => span.text).join(" ");
     const label = line.words.map((word) => word.text).join(" ");
     for (const offset of findText(text, needle)) {
@@ -104,6 +115,16 @@ export function searchOcr(
         });
     }
   }
+  // Words typed in another order than printed still find a line holding them all.
+  if (!matches.length && needle.includes(" "))
+    for (const line of index.lines) {
+      const spans = wordSpans(line);
+      const found = findWords(spans.map((span) => span.text).join(" "), needle);
+      if (!found) continue;
+      const words = spans.filter((span) => found.some(({ length, offsets }) =>
+        offsets.some((offset) => span.start < offset + length && span.end > offset)));
+      matches.push({ text: line.words.map((word) => word.text).join(" "), polygons: words.map(({ word }) => word.polygon) });
+    }
   // Overlapping crops and angle passes can see the same label more than once.
   const seen = new Set<string>();
   return matches.filter((match) => {
