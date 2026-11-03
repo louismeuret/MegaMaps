@@ -453,7 +453,7 @@ small {
   flex: 1;
 }
 /* Below the example map, still inviting an import of one's own. */
-.map-list:not(:empty) + .empty {
+.map-list:not(:empty) ~ .empty {
   margin-top: var(--space-12);
 }
 .empty:hover,

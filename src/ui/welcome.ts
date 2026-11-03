@@ -1,10 +1,10 @@
 import { t } from "../i18n";
 import { preference, setPreference } from "../preferences";
 import { track } from "../stats";
-import { dialogHeader, showDialog } from "./dialog";
+import { dialogHeader, keepFormOpen, showDialog } from "./dialog";
 import { icons } from "./icons";
 
-export const welcomeMarkup = `<dialog id="welcome" aria-labelledby="welcome-title">${dialogHeader("welcome-title", t("Your maps, even underground"), icons.map, "welcome-close")}<p>${t("Mega Maps keeps big scans of quarry and cave plans on your phone. Once a map is in, it works with no signal.")}</p><div class="dialog-actions"><button type="button" id="welcome-import" class="primary">${icons.download}<span>${t("Import a map")}</span></button><button type="button" id="welcome-example" class="quiet">${icons.sparkle}<span>${t("Try the example first")}</span></button></div></dialog>`;
+export const welcomeMarkup = `<dialog id="welcome" aria-labelledby="welcome-title">${dialogHeader("welcome-title", t("Your maps, offline"), icons.map)}<p>${t("Open big maps on your phone, even with no signal. Plan routes, mark places and share them with friends.")}</p><div class="dialog-actions"><button type="button" id="welcome-import" class="primary">${icons.download}<span>${t("Import a map")}</span></button><button type="button" id="welcome-example" class="quiet">${icons.sparkle}<span>${t("Try the example first")}</span></button></div></dialog>`;
 
 type Actions = {
   /** Whether there is, or soon will be, an example map to try. */
@@ -13,9 +13,9 @@ type Actions = {
   openExample(): void;
 };
 
-/** A new device is asked once whether to import a map or try the example. */
+/** A new device is asked once whether to import a map or try the example, and must pick one. */
 export function initWelcome(welcome: HTMLDialogElement, actions: Actions) {
-  const answer = (choice: "import" | "example" | "closed") => {
+  const answer = (choice: "import" | "example") => {
     track("welcome_answered", { choice });
     welcome.close();
     if (choice === "import") actions.importMap();
@@ -23,7 +23,7 @@ export function initWelcome(welcome: HTMLDialogElement, actions: Actions) {
   };
   welcome.querySelector("#welcome-import")!.addEventListener("click", () => answer("import"));
   welcome.querySelector("#welcome-example")!.addEventListener("click", () => answer("example"));
-  welcome.querySelector("#welcome-close")!.addEventListener("click", () => answer("closed"));
+  welcome.addEventListener("cancel", keepFormOpen);
 
   return {
     /** A device that already has maps knows its way. Returns whether it showed anything. */
