@@ -16,7 +16,10 @@ export function searchMap(index: OcrIndex | undefined, markers: MapMarker[], que
     const text = normalizeText(`${marker.label} ${marker.description}`);
     return findText(text, normalized).length || !!findWords(text, normalized);
   }).map(marker => ({ text: marker.label, polygons: [], marker }));
-  return [...places, ...searchOcr(index, query)];
+  // One letter is in nearly every label: its thousands of highlights would stall the
+  // first keystroke and find nothing in particular. A number, such as gallery 5, still does.
+  const text = /^\p{L}$/u.test(normalized) ? [] : searchOcr(index, query);
+  return [...places, ...text];
 }
 
 /** "Allée 25; Allée 55": the two searches of a double search. */
