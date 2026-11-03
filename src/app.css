@@ -431,8 +431,9 @@
 }
 
 /* Everything arrives the same way: faded out, at its own --enter-from. */
-/* The field being typed in, in a bar just above the keyboard. Nothing else moves
-   for the keyboard, so this bar is what shows of a form while typing. */
+/* The field being typed in, just above the keyboard. Nothing else moves for the
+   keyboard. In a form the page dims and only the field stays lit, its name inside
+   its box. */
 [data-typing] {
   --enter-from: var(--rise-from);
   position: fixed;
@@ -446,15 +447,49 @@
   transition: bottom var(--motion-fast);
 }
 label[data-typing] {
-  padding: 12px;
+  display: block;
+  min-height: 0;
+  padding: 8px 16px;
+  color: var(--accent);
+  font-size: var(--text-small);
+  font-weight: 600;
   background: var(--bg);
-  border: 1px solid color-mix(in srgb, var(--accent, var(--neon-view)) 45%, transparent);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-dialog);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-md);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent);
+}
+label[data-typing] :is(input, textarea) {
+  display: block;
+  width: 100%;
+  min-height: 0;
+  margin-top: 2px;
+  padding: 0;
+  color: var(--text);
+  font-size: var(--text-body);
+  font-weight: 400;
+  background: none;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
 }
 /* Notes grow with the text, up to what the room above the keyboard allows. */
-[data-typing] textarea {
-  max-height: calc(5lh + 2 * 12px + 2px);
+label[data-typing] textarea {
+  max-height: 5lh;
+}
+/* A settings row keeps only its name: the field needs the room. */
+label[data-typing] > span:has(> svg),
+label[data-typing] small {
+  display: none;
+}
+#settings [data-typing] {
+  --accent: var(--neon-view);
+}
+[data-scrim] {
+  --enter-from: none;
+  position: fixed;
+  inset: 0;
+  z-index: 29;
+  background: rgb(0 0 0 / 0.72);
 }
 
 @keyframes tap {

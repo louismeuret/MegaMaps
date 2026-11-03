@@ -55,49 +55,59 @@ test("a tap on empty space in a form puts the keyboard away; controls, drags and
 function form() {
   const window = new Window(), { document } = window;
   Object.assign(globalThis, { getComputedStyle: window.getComputedStyle.bind(window) });
-  document.body.innerHTML = `<dialog><form><label id="name-label">Name<input id="name"></label><label id="note-label">Note<textarea id="note"></textarea></label>
+  document.body.innerHTML = `<dialog><form><label id="name-label">Name<input id="name" required><small id="hint">Hint</small></label><label id="note-label">Note<textarea id="note"></textarea></label>
     <label id="day-label">Date<input id="day" type="date"></label></form></dialog><input id="bare"><label id="outside-label"><input id="outside"></label>
     <div id="bar" data-bar><input id="query" type="search"></div>`;
   const page = document as unknown as Document;
   const element = (id: string) => page.getElementById(id)!;
   const focus = (id: string) => element(id).dispatchEvent(new window.Event("focusin", { bubbles: true }) as unknown as Event);
-  const blur = (id: string) => element(id).dispatchEvent(new window.Event("focusout", { bubbles: true }) as unknown as Event);
+  const blur = (id: string, next: Element | null = null) => {
+    const event = new window.Event("focusout", { bubbles: true }) as unknown as Event;
+    Object.defineProperty(event, "relatedTarget", { value: next });
+    element(id).dispatchEvent(event);
+  };
   const typing = () => [...page.querySelectorAll("[data-typing]")].map((label) => label.id);
   return { page, element, focus, blur, typing };
 }
 
-test("the field being typed in goes above the keyboard and its form keeps its shape", () => {
+test("the field being typed in goes above the keyboard, the page dims and its form stays whole", () => {
   const { page, element, focus, blur, typing } = form();
   initFieldLift("dialog", page, () => true);
-  const label = element("name-label"), inForm = () => page.querySelector("form")!.children.length;
-  Object.defineProperty(label, "offsetHeight", { value: 90 });
+  const inForm = () => page.querySelector("form")!.children.length;
+  const dims = () => page.querySelectorAll("dialog > [data-scrim]:not([hidden])").length;
   focus("name");
   assert.deepEqual(typing(), ["name-label"]);
-  assert.equal(inForm(), 4, "a blank copy stays in the form");
-  const slot = label.nextElementSibling as HTMLElement;
-  assert.equal(slot.style.height, "90px");
-  assert.equal(slot.id, "", "the copy doesn't take the label's id");
-  assert.equal(slot.textContent, "");
+  assert.equal(dims(), 1);
+  assert.equal(inForm(), 4, "a copy stays in the form");
+  const copy = element("name-label").nextElementSibling as HTMLElement;
+  assert.equal(copy.textContent, "NameHint", "it reads as the field did");
+  assert.equal(copy.querySelector("[id]"), null, "ids stay with the real field");
+  assert.equal(copy.id, "");
+  assert.equal(copy.querySelector("input")!.disabled, true, "an empty required copy can't block Save");
 
-  // Next: the name goes back as the description comes up.
-  blur("name");
+  // Next: the name goes back as the description comes up, under the same dim.
+  const scrim = page.querySelector("[data-scrim]");
+  blur("name", element("note"));
   focus("note");
   assert.deepEqual(typing(), ["note-label"]);
   assert.equal(inForm(), 4);
+  assert.equal(page.querySelector("[data-scrim]:not([hidden])"), scrim);
+
   blur("note");
   assert.deepEqual(typing(), []);
   assert.equal(inForm(), 3, "closing the keyboard puts the field back");
+  assert.equal(dims(), 0);
 });
 
-test("a bar with its own look goes above the keyboard whole", () => {
+test("Search goes above the keyboard whole", () => {
   const { page, element, focus, blur, typing } = form();
   initFieldLift("dialog, [data-bar]", page, () => true);
   focus("query");
   assert.deepEqual(typing(), ["bar"]);
-  assert.equal(element("bar").nextElementSibling?.id, "");
+  assert.equal(element("bar").nextElementSibling, null, "it holds no place in a form");
+  assert.equal(page.querySelector("[data-scrim]"), null, "the map stays lit, so matches show");
   blur("query");
   assert.deepEqual(typing(), []);
-  assert.equal(element("bar").nextElementSibling, null);
 });
 
 test("only text fields in a form on a touch screen go above the keyboard", () => {
