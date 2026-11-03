@@ -1863,8 +1863,9 @@ export class ViewerControls {
     measure.setAttribute("aria-pressed", String(measuring));
     this.input("map-search").disabled = editing;
     this.el<HTMLButtonElement>("open-search").disabled = editing;
-    // A task's card, or the search bar, takes the pill's place at the bottom.
-    this.el("dock").hidden = editing || this.openSheet === "search";
+    // A task's card, the search bar or an open panel takes the pill's place,
+    // so each gets the room the pill held.
+    this.el("dock").hidden = editing || sheetOpen;
     this.el("tool-bar").hidden = !editing || sheetOpen;
     const route = this.route();
     const count = route?.points.length ?? 0;
