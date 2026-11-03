@@ -1,6 +1,7 @@
 import { t } from "../i18n";
 import { showDialog } from "./dialog";
 import { icons } from "./icons";
+import { motion } from "./motion";
 
 export type SheetAction = {
   label: string;
@@ -51,7 +52,7 @@ export function showActionSheet(
     if (event.target === dialog) dialog.close();
   });
   // Gone once its closing transition has played.
-  dialog.addEventListener("close", () => setTimeout(() => dialog.remove(), 300));
+  dialog.addEventListener("close", () => setTimeout(() => dialog.remove(), motion.fast));
   parent.append(dialog);
   showDialog(dialog);
   return dialog;

@@ -10,6 +10,7 @@ import {
   type NavigationState,
 } from "./navigation";
 import { trailAge, trailAgeChange } from "./trail";
+import { motion } from "../ui/motion";
 const NS = "http://www.w3.org/2000/svg";
 const node = <K extends keyof SVGElementTagNameMap>(
   tag: K,
@@ -65,7 +66,7 @@ const ARROW_GAP = 40;
 // Text is assigned through textContent; imported/user names never become markup.
 // Visibility is CSS-driven (svg classes) so toggling layers needs no rebuild.
 // Covers the camera glide plus two pulses (see .found in style.css).
-const FOUND_MS = 2200;
+const FOUND_MS = motion.slow + 2 * motion.pulse + motion.fast;
 /** The Measure control's neon, as --neon-measure in style.css. */
 const MEASURE_COLOR = "#fff04d";
 /** The Trail control's neon, as --neon-trail in style.css. */
