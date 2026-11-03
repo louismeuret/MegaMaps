@@ -21,6 +21,16 @@ function exifOrientation(data: Uint8Array): number {
   }
   return 1;
 }
+/** Files people pick for a map that it can't read, named so they know what to do instead. */
+function unsupported(b: Uint8Array) {
+  if (text(b, 0, 5) === "%PDF-")
+    return t("PDF plans can’t be imported. Export the page as a JPEG or PNG image, then import that.");
+  if (text(b, 0, 4) === "II*\0" || text(b, 0, 4) === "MM\0*")
+    return t("TIFF scans can’t be imported. Save the scan as a JPEG or PNG image, then import that.");
+  if (text(b, 4, 4) === "ftyp" && /^(hei[cx]|hev[cx]|mif1|msf1)$/.test(text(b, 8, 4)))
+    return t("HEIC photos can’t be imported. Pick the photo from your Photos library, which converts it, or save it as JPEG.");
+  return t("Choose a JPEG, PNG, or WebP image.");
+}
 // Read container headers without decoding pixels or loading the whole original.
 export async function readHeader(file: Blob): Promise<ImageHeader> {
   if (file.size > MAX_FILE_BYTES)
@@ -113,7 +123,7 @@ export async function readHeader(file: Blob): Promise<ImageHeader> {
         orientation: 1,
       };
     } else throw new Error(t("Unsupported WebP header."));
-  } else throw new Error(t("Choose a JPEG, PNG, or WebP image."));
+  } else throw new Error(unsupported(b));
   if (!header.width || !header.height || header.width * header.height > MAX_SOURCE_PIXELS)
     throw new Error(t("Image exceeds the 1,000 megapixel limit."));
   return header;

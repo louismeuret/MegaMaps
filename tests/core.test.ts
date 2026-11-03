@@ -225,6 +225,14 @@ test("streaming PNG supports RGBA, packed palette, transparency and 16-bit grays
     assert.deepEqual(pixels, item.expected);
   }
 });
+test("a PDF, TIFF or HEIC file is named, with what to do instead", async () => {
+  const header = (bytes: string) => new Blob([Uint8Array.from(bytes, (c) => c.charCodeAt(0))]);
+  await assert.rejects(readHeader(header("%PDF-1.7\n%âãÏÓ\n1 0 obj")), /^Error: PDF plans .*JPEG or PNG/);
+  await assert.rejects(readHeader(header("II*\0\x08\0\0\0\0\0\0\0")), /^Error: TIFF scans/);
+  await assert.rejects(readHeader(header("MM\0*\0\0\0\x08\0\0\0\0")), /^Error: TIFF scans/);
+  await assert.rejects(readHeader(header("\0\0\0\x18ftypheic\0\0\0\0mif1heic")), /^Error: HEIC photos/);
+  await assert.rejects(readHeader(header("GIF89a\x01\0\x01\0\0\0\0\0")), /^Error: Choose a JPEG, PNG, or WebP image\.$/);
+});
 test("malformed, oversized, and truncated pixel data fail explicitly", async () => {
   await assert.rejects(readHeader(new Blob(["not an image"])));
   await assert.rejects(readHeader(png(65535, 65535, 8, 2, new Uint8Array())));
