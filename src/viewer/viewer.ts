@@ -313,6 +313,8 @@ export class Viewer {
       const bitmap = await this.decode(blob);
       if (this.disposed || look !== this.look) bitmap.close();
       else {
+        // Toggled away and back, two decodes for this look can both land.
+        this.base?.close();
         this.base = bitmap;
         this.invalidate();
       }
