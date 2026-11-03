@@ -33,3 +33,4 @@ When the user asks for a new release:
 
 - Write focused tests for meaningful behavior. No smoke tests, and no regression tests for intentionally deleted features.
 - Do not use computer use or a browser for testing unless explicitly asked.
+- Check that an optimisation is faster with `npm run bench -- --against origin/dev` (headless Chrome on this Mac; see `bench/run.ts`). Only "faster" counts; "noise" means no measurable change.
