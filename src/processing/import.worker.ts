@@ -13,7 +13,7 @@ import { shrinkRows } from "./shrink";
 import { pyramid, tileCount } from "./pyramid";
 import { decodePNG, NativePNGRequired } from "./png";
 import { DECODED, decodeJPEG } from "./jpeg";
-import { tileBand, buildParents } from "./tiles";
+import { tileBand, buildParents, tileWriter } from "./tiles";
 const reply = (message: WorkerReply) => postMessage(message);
 // A failed promise nothing waits on would otherwise leave the import waiting forever.
 onunhandledrejection = ({ reason }) =>
@@ -95,18 +95,15 @@ onmessage = async (event: MessageEvent<{ file: File; record: MapRecord }>) => {
       try {
         if (bitmap.width !== header.width || bitmap.height !== header.height)
           throw new Error(t("Image metadata does not match decoded dimensions."));
+        const tiles = tileWriter(measuredStore, record.id, progress);
         for (let y = 0; y < header.height; y += TILE_SIZE)
           for (let x = 0; x < header.width; x += TILE_SIZE) {
             canvas.width = Math.min(TILE_SIZE, header.width - x);
             canvas.height = Math.min(TILE_SIZE, header.height - y);
             canvas.getContext("2d")!.drawImage(bitmap, -x, -y);
-            await measuredStore.put(
-              record.id,
-              tileKey(0, x / TILE_SIZE, y / TILE_SIZE),
-              await canvas.convertToBlob({ type: "image/png" }),
-            );
-            progress();
+            await tiles.write(canvas, tileKey(0, x / TILE_SIZE, y / TILE_SIZE));
           }
+        await tiles.flush();
       } finally {
         bitmap.close();
       }

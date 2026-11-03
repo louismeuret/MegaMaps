@@ -6,7 +6,7 @@ import type { RowConsumer } from "./png";
  * starts, so the next tile is drawn while earlier ones encode and save; a
  * few at a time keeps the copies small. */
 const IN_FLIGHT = 4;
-function tileWriter(store: PayloadStore, id: string, progress: () => void) {
+export function tileWriter(store: PayloadStore, id: string, progress: () => void) {
   const pending: Promise<void>[] = [];
   return {
     async write(canvas: OffscreenCanvas, key: string) {
