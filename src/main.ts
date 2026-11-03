@@ -273,23 +273,19 @@ async function shareMap(map: MapRecord, item?: { kind: "marker" | "route"; id: s
   }
 }
 // An origin-wide lock prevents launch cleanup from racing another tab's import.
-// Recutting maps steps aside for any change and resumes after it.
-async function mutate<T>(work: () => Promise<T>): Promise<T> {
+// Recutting maps steps aside for any change and resumes after it. With `wait`,
+// work another window holds storage for waits its turn, until it is cancelled.
+async function mutate<T>(work: () => Promise<T>, wait?: { signal: AbortSignal; waiting: () => void }): Promise<T> {
   await stopRetiling();
   try {
-    if (navigator.locks)
-      return await navigator.locks.request(
-        "map-viewer-storage",
-        { ifAvailable: true },
-        (lock) => {
-          if (!lock)
-            throw new Error(
-              t("Mega Maps is preparing a map in another window. Let it finish first."),
-            );
-          return work();
-        },
-      );
-    return await work();
+    if (!navigator.locks) return await work();
+    const held = await navigator.locks.request("map-viewer-storage", { ifAvailable: true },
+      async (lock) => lock ? { result: await work() } : undefined);
+    if (held) return held.result;
+    if (!wait)
+      throw new Error(t("Mega Maps is preparing a map in another window. Let it finish first."));
+    wait.waiting();
+    return await navigator.locks.request("map-viewer-storage", { signal: wait.signal }, work);
   } finally {
     retileMaps();
   }
@@ -704,7 +700,7 @@ function importImage(file: File) {
       file,
       (progress) => showProgress(progress.fraction * 100, progress.message),
       controller.signal,
-    ),
+    ), { signal: controller.signal, waiting: () => showProgress(0, t("Waiting for Mega Maps to finish in another window…")) },
   )
     .then(async (map) => {
       track("map_imported", { ok: true, ...kind, megapixels: Math.round(map.width * map.height / 1e6), shrunk: !!map.shrunkFrom, seconds: Math.round((Date.now() - started) / 1000) });
