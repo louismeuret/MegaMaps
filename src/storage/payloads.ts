@@ -1,5 +1,5 @@
 import type { Backend, MapRecord } from "../types";
-import { database, listMaps, transact, removeRecord, saveMap } from "./database";
+import { listMaps, transact, removeRecord, saveMap } from "./database";
 import { deleteNavigation } from "./navigation";
 import { deleteOcr } from "./ocr";
 import { deleteMapPhotos } from "./photos";
@@ -76,24 +76,9 @@ class IndexedDBStore implements PayloadStore {
     if (!blob) throw new Error(t("A stored tile is missing. Reimport this map."));
     return blob;
   }
+  // One range delete, instead of a cursor visiting each of a big map's tiles.
   async deleteMap(id: string) {
-    const db = await database();
-    await new Promise<void>((resolve, reject) => {
-      const tx = db.transaction("payloads", "readwrite");
-      const request = tx
-        .objectStore("payloads")
-        .openKeyCursor(IDBKeyRange.bound(`${id}/`, `${id}/\uffff`));
-      request.onsuccess = () => {
-        const cursor = request.result;
-        if (cursor) {
-          tx.objectStore("payloads").delete(cursor.primaryKey);
-          cursor.continue();
-        }
-      };
-      tx.oncomplete = () => resolve();
-      tx.onabort = () => reject(tx.error);
-      tx.onerror = () => reject(tx.error);
-    });
+    await transact("payloads", "readwrite", (s) => s.delete(IDBKeyRange.bound(`${id}/`, `${id}/\uffff`)));
   }
 }
 const stores = { opfs: new OPFSStore(), indexeddb: new IndexedDBStore() };

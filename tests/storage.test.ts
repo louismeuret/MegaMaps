@@ -5,6 +5,11 @@ import { payloadStore, deleteStoredMap } from "../src/storage/payloads";
 import { listMaps, saveMap, renameMap, removeRecord, markOpened } from "../src/storage/database";
 import { loadNavigation, saveNavigation } from "../src/storage/navigation";
 import { photoBytes, savePhoto } from "../src/storage/photos";
+import { storedBytes } from "../src/storage/usage";
+import { installPlatform } from "./node-platform";
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import path from "node:path";
 import { defaultNavigation } from "../src/viewer/navigation";
 import type { MapRecord } from "../src/types";
 test("fallback payloads persist and deleting one map preserves its neighbour", async () => {
@@ -85,4 +90,21 @@ test("a map's photo storage counts only its own photos", async () => {
   await savePhoto("caves", new Blob(["neighbour"]));
   assert.equal(await photoBytes("cave"), 8);
   assert.equal(await photoBytes("empty"), 0);
+});
+
+test("stored bytes add up every map file on the device and every stored blob", async () => {
+  const before = await storedBytes();
+  const root = await mkdtemp(path.join(tmpdir(), "map-viewer-usage-"));
+  await installPlatform(root);
+  try {
+    const files = payloadStore("opfs");
+    await files.put("one", "original", new Blob(["12345"]));
+    await files.put("one", "0-0-0.png", new Blob(["123"]));
+    await files.put("two", "0-0-0.png", new Blob(["1234567"]));
+    await payloadStore("indexeddb").put("usage", "original", new Blob(["12"]));
+    await savePhoto("usage", new Blob(["1234"]));
+    assert.equal(await storedBytes() - before, 5 + 3 + 7 + 2 + 4);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
 });
