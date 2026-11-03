@@ -16,10 +16,12 @@
 - No handles on modals. Show a scroll indicator only when content overflows.
 - Scrolling must follow the user's movement smoothly, without jumps or teleporting.
 - Clicking a place opens readable details first; editing requires an explicit Edit action.
+- The UI is Svelte 5 components styled with Tailwind v4 utilities; theme tokens and custom utilities live in `src/app.css`. Build on the shared parts in `src/ui/kit/` (Button, DialogHeader, HeaderButton, Icon, Row…) instead of restyling the same thing twice. The map's state lives in `ViewerControls` (`src/ui/viewer-controls.svelte.ts`); its components only read it and call its methods.
+- Font sizes are the `text-small`, `text-body` and `text-heading` utilities, and spacing utilities count in pixels (`p-12` is 12px).
 
 ## Motion
 
-- Use the `--motion-*` tokens in `src/style.css` (mirrored in `src/ui/motion.ts`), never raw durations: press 80ms, state changes 150ms, arriving 250ms, emphasis 400ms, one blink 1s.
+- Use the `--motion-*` tokens in `src/app.css` (mirrored in `src/ui/motion.ts`), never raw durations (`duration-press`, `duration-fast`, `duration-base`, `duration-slow` in classes): press 80ms, state changes 150ms, arriving 250ms, emphasis 400ms, one blink 1s.
 - Things arrive with `--ease-out` from where they live (set `--enter-from`) and leave the way they came in 150ms with `--ease-in`. Something over the map that comes and goes takes the `motion` class, and `hidden` plays both; something removed from the page leaves with `leave()`.
 - Nothing runs longer than 400ms except map glides and status loops. Everything honours reduced motion.
 

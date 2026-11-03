@@ -1,4 +1,4 @@
-// The app's timings, in milliseconds, matching the --motion-* tokens in style.css:
+// The app's timings, in milliseconds, matching the --motion-* tokens in app.css:
 // press for a finger going down, fast for changes of state and anything leaving,
 // base for anything arriving, slow only for emphasis, and pulse for one blink.
 export const motion = { press: 80, fast: 150, base: 250, slow: 400, pulse: 1000 };
