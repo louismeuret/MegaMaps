@@ -1,4 +1,4 @@
-import { motion, reducedMotion } from "./motion";
+import { leave, motion, reducedMotion } from "./motion";
 
 type VisibleArea = Pick<VisualViewport, "height" | "offsetTop">;
 
@@ -57,39 +57,66 @@ export function initKeyboardInset(root = document.documentElement) {
 
 // Within `scope`, a field's label, or the [data-bar] it's in, moves above the
 // keyboard as it takes focus. That has to happen at once, with no transition: a
-// field still low on the screen makes iOS pan the whole page to reveal it. A blank
-// copy holds its place in the form, and it glides back when typing ends.
+// field still low on the screen makes iOS pan the whole page to reveal it. A label
+// leaves a disabled copy in the form, so the form stays whole, and the page dims
+// around it until typing ends, when it glides back. Tapping the dim ends typing.
 export function initFieldLift(scope: string, doc = document, touch = () => matchMedia("(pointer: coarse)").matches) {
-  let lifted: { label: HTMLElement; slot: HTMLElement } | undefined;
+  let lifted: { bar: HTMLElement; copy?: HTMLElement } | undefined;
+  let scrim: HTMLElement | undefined;
+  const barOf = (target: EventTarget | null) => {
+    const field = target as HTMLElement | null;
+    if (!isTextEntry(field) || !field!.closest(scope) || !touch()) return null;
+    return field!.closest<HTMLElement>("label, [data-bar]");
+  };
   const drop = () => {
     if (!lifted) return;
-    const { label, slot } = lifted;
+    const { bar, copy } = lifted;
     lifted = undefined;
-    const from = label.getBoundingClientRect().top;
-    label.removeAttribute("data-typing");
-    slot.remove();
+    const from = bar.getBoundingClientRect().top;
+    bar.removeAttribute("data-typing");
+    copy?.remove();
     if (reducedMotion()) return;
-    const distance = from - label.getBoundingClientRect().top;
-    const easing = getComputedStyle(label).getPropertyValue("--ease-in");
-    label.animate({ transform: [`translateY(${distance}px)`, "none"] }, { duration: motion.fast, easing });
+    const distance = from - bar.getBoundingClientRect().top;
+    const easing = getComputedStyle(bar).getPropertyValue("--ease-in");
+    bar.animate({ transform: [`translateY(${distance}px)`, "none"] }, { duration: motion.fast, easing });
   };
-  doc.addEventListener("focusout", drop);
+  doc.addEventListener("focusout", (event) => {
+    drop();
+    // Next goes on to another field under the same dim.
+    if (scrim && !barOf(event.relatedTarget)?.matches("label")) {
+      leave(scrim);
+      scrim = undefined;
+    }
+  });
   doc.addEventListener("focusin", (event) => {
     drop();
-    const field = event.target as HTMLElement;
-    const label = field.closest<HTMLElement>("label, [data-bar]");
-    if (!isTextEntry(field) || !label || !field.closest(scope) || !touch()) return;
+    const bar = barOf(event.target);
+    if (!bar) return;
     // A dialog still rising would carry a fixed field along with it.
-    for (const rise of label.closest("dialog")?.getAnimations() ?? [])
+    for (const rise of bar.closest("dialog")?.getAnimations() ?? [])
       if ((rise as CSSTransition).transitionProperty === "transform") rise.finish();
-    const slot = label.cloneNode() as HTMLElement;
-    slot.removeAttribute("id");
-    slot.style.height = `${label.offsetHeight}px`;
-    slot.style.visibility = "hidden";
-    label.after(slot);
-    label.setAttribute("data-typing", "");
-    lifted = { label, slot };
+    lifted = { bar };
+    if (bar.matches("label")) {
+      lifted.copy = copyOf(bar);
+      bar.after(lifted.copy);
+      if (!scrim) {
+        scrim = doc.createElement("div");
+        scrim.className = "motion";
+        scrim.setAttribute("data-scrim", "");
+        bar.closest(scope)!.append(scrim);
+      }
+    }
+    bar.setAttribute("data-typing", "");
   });
+}
+
+// Disabled, or an empty required copy would block the form's Save.
+function copyOf(label: HTMLElement) {
+  const copy = label.cloneNode(true) as HTMLElement;
+  copy.setAttribute("aria-hidden", "true");
+  for (const part of [copy, ...copy.querySelectorAll("[id]")]) part.removeAttribute("id");
+  for (const field of copy.querySelectorAll<HTMLInputElement>("input, textarea")) field.disabled = true;
+  return copy;
 }
 
 const controls = "input, textarea, select, button, label, a";
