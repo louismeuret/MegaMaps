@@ -399,6 +399,7 @@ export const fr = {
   "PNG pixel data is missing.": "Les pixels du PNG sont manquants.",
   "Passage": "Passage",
   "Pasted map {date}": "Carte collée {date}",
+  "Photo {number} of {total}": "Photo {number} sur {total}",
   "Photos": "Photos",
   "Photos {size}": "Photos {size}",
   "Place": "Lieu",

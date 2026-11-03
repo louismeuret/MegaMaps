@@ -683,6 +683,11 @@ export class ViewerControls {
     card.style.setProperty("--spot-x", spot ? `${spot.x}px` : "");
     card.style.setProperty("--spot-y", spot ? `${spot.y}px` : "");
   }
+  /** Lets go of the photos the card showed. */
+  private releasePhotos() {
+    for (const url of this.photoURLs.values()) void url.then((url) => url && URL.revokeObjectURL(url));
+    this.photoURLs.clear();
+  }
   private photoURL(id: string) {
     let url = this.photoURLs.get(id);
     if (!url) {
@@ -705,7 +710,7 @@ export class ViewerControls {
   /** Full screen, swiping through the item's photos from the one tapped. */
   private showPhotos(ids: string[], index: number) {
     this.photoViewer ??= new PhotoViewer(this.dialog("photo-viewer"), this.controller.signal);
-    this.photoViewer.show(ids.map((id, i) => this.photoImage(id, `Photo ${i + 1} of ${ids.length}`) as HTMLImageElement), index);
+    this.photoViewer.show(ids.map((id, i) => this.photoImage(id, t("Photo {number} of {total}", { number: i + 1, total: ids.length })) as HTMLImageElement), index);
   }
   private renderFormPhotos() {
     const list = this.el("marker-photo-list"), count = this.formPhotos.length;
@@ -726,7 +731,7 @@ export class ViewerControls {
         this.renderFormPhotos();
       });
       item.append(remove);
-      return this.photoImage(id, `Photo ${index + 1} of ${count}`, item);
+      return this.photoImage(id, t("Photo {number} of {total}", { number: index + 1, total: count }), item);
     }), addItem);
     const busy = this.photoJobs > 0;
     add.disabled = busy;
@@ -1177,7 +1182,7 @@ export class ViewerControls {
       open.title = t("View full screen");
       open.append(this.root.ownerDocument.createElement("img"));
       this.on(open, "click", () => this.showPhotos(item.photos!, index));
-      return this.photoImage(id, `Photo ${index + 1} of ${count}`, open);
+      return this.photoImage(id, t("Photo {number} of {total}", { number: index + 1, total: count }), open);
     }));
     photos.hidden = !count;
     photos.scrollLeft = 0;
@@ -1656,8 +1661,7 @@ export class ViewerControls {
       this.viewingMarker = this.viewingRoute = undefined;
       this.viewer?.select?.();
       this.formVersion++;
-      for (const url of this.photoURLs.values()) void url.then((url) => url && URL.revokeObjectURL(url));
-      this.photoURLs.clear();
+      this.releasePhotos();
       if (!this.viewingTrip) this.viewer?.cover?.();
       this.viewer?.previewPlace?.();
       this.viewer?.refreshLabels?.();
@@ -2505,6 +2509,8 @@ export class ViewerControls {
     this.controller.abort();
     this.dialog("marker-dialog").close();
     this.dialog("name-dialog").close();
+    // The card's close handler went with the controller.
+    this.releasePhotos();
     return saved;
   }
 }

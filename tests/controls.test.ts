@@ -1424,6 +1424,16 @@ test("place photos lead the details as a carousel and are removed from the edit 
     el("marker-form").dispatchEvent(new window.Event("submit", { cancelable: true }));
     assert.equal(state.markers[0]!.photos, undefined);
     assert.equal(carousel.hidden, true);
+
+    const revoke = URL.revokeObjectURL, revoked: string[] = [];
+    URL.revokeObjectURL = (url) => { revoked.push(url); revoke(url); };
+    try {
+      await controls.dispose();
+      await loaded();
+    } finally {
+      URL.revokeObjectURL = revoke;
+    }
+    assert.equal(revoked.length, 2, "leaving the map with the card open lets go of its photos");
   } finally {
     await controls.dispose();
   }
