@@ -80,7 +80,6 @@ const newestFirst = (log: PlaceLogEntry[]) =>
 const copyPoints = (points: Point[]) => points.map((point) => ({ ...point }));
 type Sheet = (typeof sheets)[number] | "search";
 const SEARCH_DEBOUNCE_MS = 200;
-const SPOTLIGHT_MS = 4500;
 const rotationModes: Record<RotationMode, { icon: string; label: string }> = {
   free: { icon: icons.freeRotation, label: t("Manual") },
   compass: { icon: icons.compass, label: t("Compass") },
@@ -170,7 +169,6 @@ export class ViewerControls {
   private nameAction?: (name: string) => void;
   private toastTimer?: ReturnType<typeof setTimeout>;
   private toastUndo?: () => void;
-  private spotlightTimer?: ReturnType<typeof setTimeout>;
   /** Move (a place) or Edit points (a route) saves the form first. */
   private moveAfterSave = false;
   /** The card's Delete waiting for its second tap. */
@@ -1295,22 +1293,6 @@ export class ViewerControls {
     if (returnToDetails) this.showDetails(route);
     this.toast(unchanged ? t("{name} unchanged", { name }) : t("{name} updated", { name }), unchanged ? "quiet" : "done");
   }
-  private spotlight() {
-    const stage = this.el("map-stage");
-    const count = this.state.routes.length + this.state.markers.length;
-    this.sheet(undefined);
-    if (!count) return;
-    clearTimeout(this.spotlightTimer);
-    // Restart the CSS animation when pressed again.
-    stage.classList.remove("spotlight");
-    void stage.offsetWidth;
-    stage.classList.add("spotlight");
-    this.el("spotlight").classList.add("active");
-    this.spotlightTimer = setTimeout(() => {
-      stage.classList.remove("spotlight");
-      this.el("spotlight").classList.remove("active");
-    }, SPOTLIGHT_MS);
-  }
   private bind() {
     const page = this.root.ownerDocument;
     this.on(page, "visibilitychange", () => {
@@ -1358,7 +1340,6 @@ export class ViewerControls {
         this.state.layers[layer] = this.input(`layer-${layer}`).checked;
         this.changed(true);
       });
-    this.click("spotlight", () => this.spotlight());
     for (const mode of manualModes) {
       const input = this.input(`rotation-${mode}`);
       this.on(input, "change", () => {
@@ -2235,7 +2216,6 @@ export class ViewerControls {
       if (layer !== "labels")
         this.el(`layer-${layer}-count`).textContent = String(counts[layer]);
     }
-    this.el<HTMLButtonElement>("spotlight").disabled = !(counts.routes + counts.places);
     // Fine rotation only appears once twisting is unlocked.
     this.rowPopover?.remove();
     this.rowPopover = undefined;
@@ -2505,12 +2485,10 @@ export class ViewerControls {
     if (!this.root.ownerDocument.hidden) this.endVisit();
     clearTimeout(this.searchTimer);
     clearTimeout(this.toastTimer);
-    clearTimeout(this.spotlightTimer);
     clearTimeout(this.cardDeleteTimer);
     clearTimeout(this.confirmTimer);
     clearTimeout(this.discardTimer);
     this.stopCompass();
-    this.el("map-stage").classList.remove("spotlight");
     this.showToast(false);
     const saved = this.flush();
     this.controller.abort();

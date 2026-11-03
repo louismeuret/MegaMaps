@@ -103,7 +103,6 @@ export const viewerMarkup = `
         ${layerToggle("places", t("Places"), icons.pin)}
         ${layerToggle("labels", t("Names"), icons.text)}
       </div>
-      <button id="spotlight" class="panel-action spotlight-action" title="${t("Dim the map for a moment and pulse every route and place, even hidden ones")}">${icons.sparkle}<span>${t("Highlight saved")}</span></button>
     </div>
     <div id="sheet-rotation" data-panel="rotation" data-title="${t("Rotation")}" hidden>
       <div class="panel-card rotation-list">
