@@ -51,8 +51,8 @@ export function lastUsed(map: { created: number; opened?: number }, now = Date.n
     : days < 7 ? t("Added {days} days ago", { days }) : t("Added {date}", { date });
 }
 
-/** "Entrance 3": one past the highest number already given to this kind, so
- *  names count per kind and a deletion never makes a duplicate. */
+/** "Route 3": one past the highest number already given to this base, so
+ *  names count up and a deletion never makes a duplicate. */
 export function nextName(base: string, names: Iterable<string>) {
   let highest = 0;
   for (const name of names) {

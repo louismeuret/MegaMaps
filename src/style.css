@@ -1768,6 +1768,7 @@ dialog textarea {
   max-height: calc(10lh + 2 * var(--space-12) + 2px);
   resize: none;
 }
+dialog input::placeholder,
 dialog textarea::placeholder {
   color: var(--muted);
 }
