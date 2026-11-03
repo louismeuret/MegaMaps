@@ -652,21 +652,18 @@ export const fr = {
   "Imports and text detection are faster, and search keeps up on maps with lots of text.": "Les imports et la détection de texte sont plus rapides, et la recherche reste fluide sur les cartes riches en texte.",
   "Delete everything becomes Reset: delete all data, or also put every setting back to its default.": "Tout supprimer devient Réinitialiser : supprimer toutes les données, ou aussi remettre chaque réglage par défaut.",
   "Errors such as an unreadable file, a full device or a PDF say what to do, in the app’s language.": "Les erreurs, comme un fichier illisible, un appareil plein ou un PDF, disent quoi faire, dans la langue de l’app.",
-  "Once you have a map of your own, the app offers to remove the example.": "Dès que vous avez votre propre carte, l’app propose de retirer l’exemple.",
   "Empty Saved lists say how to add a place or a route.": "Les listes Enregistrés vides expliquent comment ajouter un lieu ou un itinéraire.",
   "The Highlight saved button is gone.": "Le bouton Mettre en évidence disparaît.",
   "The page behind a dialog no longer scrolls.": "La page derrière une fenêtre ne défile plus.",
   "A part of the map that failed to load is loaded again instead of staying blank.": "Une partie de la carte qui n’a pas pu se charger est rechargée au lieu de rester vide.",
-  "Map previews no longer flash when you come back to the main menu.": "Les aperçus des cartes ne clignotent plus au retour au menu principal.",
   "The plane icon turns lime when the app is ready offline.": "L’icône d’avion passe au vert citron quand l’app est prête hors ligne.",
   "Photo descriptions and unfinished routes are in French too.": "Les descriptions de photos et les itinéraires inachevés sont aussi en français.",
-  "An example map, Val Moulin, to try the app without importing anything.": "Une carte d’exemple, Val Moulin, pour découvrir l’app sans rien importer.",
   "Map size limit: 300 → 600 megapixels.": "Taille maximale d’une carte : 300 → 600 mégapixels.",
   "Larger images, up to 1,000 megapixels, are shrunk instead of refused.": "Les images plus grandes, jusqu’à 1 000 mégapixels, sont réduites au lieu d’être refusées.",
   "The app asks before running text detection.": "L’app demande avant de lancer la détection de texte.",
   "Route names open as balloons, like place names.": "Les noms des itinéraires s’ouvrent en bulle, comme ceux des lieux.",
   "Settings shows the time of each version, not just the day.": "Réglages indique l’heure de chaque version, plus seulement le jour.",
-  "Map previews in the main menu are square.": "Les aperçus des cartes du menu principal sont bien carrés.",
+  "Map previews in the main menu are square and no longer flash when you come back.": "Les aperçus des cartes du menu principal sont bien carrés et ne clignotent plus au retour.",
 } as const;
 
 /** Singular and plural, keyed by the English noun. */
