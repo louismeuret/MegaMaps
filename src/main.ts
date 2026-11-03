@@ -822,7 +822,7 @@ function rerunOcr() {
     .finally(() => void renderOcrSettings());
 }
 initKeyboardInset();
-initFieldLift("dialog, #settings");
+initFieldLift("dialog, #settings, [data-bar]");
 initTapAway("dialog, #settings");
 lockPageZoom();
 void registerOfflineShell().then(refreshFooter);

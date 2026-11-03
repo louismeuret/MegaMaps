@@ -12,8 +12,8 @@
   const open = $derived(controls.openSheet === "search");
 </script>
 
-<div id="search-field" hidden={!open}
-  class={[overMap, "motion bottom-(--hud-bottom) pointer-coarse:focus-within:bottom-(--above-keyboard) z-5 flex h-(--tool-row-h) items-center gap-12 rounded-pill border border-glass-line bg-black pr-16 pl-20",
+<div id="search-field" data-bar hidden={!open}
+  class={[overMap, "motion bottom-(--hud-bottom) z-5 flex h-(--tool-row-h) items-center gap-12 rounded-pill border border-glass-line bg-black pr-16 pl-20",
     "shadow-glass [--c:var(--neon-saved)] focus-within:border-c/55"]}>
   <Icon svg={icons.search} class="size-24 shrink-0 text-c" />
   <input id="map-search" type="search" aria-label={t("Search map text and saved places")} aria-describedby="search-status"
