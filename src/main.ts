@@ -1019,7 +1019,7 @@ async function prepareMapSearch(map: MapRecord, version: number) {
     if (version === openVersion && !ocrErrors.has(map.id))
       controls?.updateOcr(
         undefined,
-        t("{error} Retry in the map’s Advanced settings.", { error: String(error) }),
+        t("{error} Retry in the map’s Advanced settings.", { error: errorMessage(error) }),
       );
   }
 }
