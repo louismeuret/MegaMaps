@@ -1637,7 +1637,8 @@ test("the Trail panel starts a trip, ends it with a summary, and keeps it in Pas
   click("open-trail");
   assert.equal(gone("trip-start"), false);
   assert.equal(gone("trip-end"), true, "there is nothing to end before a trip");
-  assert.equal(text("trip-list"), "No trips yet.");
+  assert.equal(gone("trip-intro"), false, "the first time, it says what a trip is");
+  assert.equal(gone("trip-list"), true, "with no trips there is no list to show");
   // Starting asks where you are, and the tap there is the trip's first point.
   click("trip-start");
   assert.equal(tools.at(-1), "trail");
@@ -1683,6 +1684,11 @@ test("the Trail panel starts a trip, ends it with a summary, and keeps it in Pas
   click("open-trail");
   click("trip-end");
   click("open-trail");
+  // With trips to show, how they work folds away above them.
+  assert.equal(gone("trip-intro"), true);
+  assert.equal(gone("trip-how-body"), true);
+  click("trip-how");
+  assert.equal(gone("trip-how-body"), false);
   const rows = [...$("trip-list").querySelectorAll("[data-row]")];
   assert.deepEqual(rows.map((row) => row.querySelector("[data-detail]")?.textContent),
     ["3:40 PM · 50 m · < 1 min", "2:05 PM · 100 m · 1 h 35"]);
