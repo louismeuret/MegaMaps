@@ -31,7 +31,10 @@
   const icon = $derived(panel === "display" ? icons.sun : panel === "trail" ? icons.trail
     : panel === "rotation" ? rotationModes[mode].icon : panel === "add" ? icons.add : icons.saved);
   const top = $derived(panel === "display" || panel === "rotation");
+  const started = $derived(panel === "trail" ? (controls.tick, controls.tripStarted()) : undefined);
 </script>
+
+{#snippet tripStart()}<p id="trip-started" class="mt-4 mb-0 text-small text-muted">{started}</p>{/snippet}
 
 <button type="button" id="sheet-dismiss" aria-label={t("Close")} hidden={!shown} onclick={() => controls.sheet(undefined)}
   class="motion absolute inset-0 z-3 size-full bg-black/25 enabled:active:scale-100"></button>
@@ -42,7 +45,7 @@
       ? "top-[calc(var(--hud-top)+52px)] bottom-auto max-h-[calc(100svh-var(--hud-top)-var(--hud-bottom)-52px)] pb-20"
       : "bottom-(--hud-bottom) max-h-[min(calc(100svh-var(--hud-top)-var(--hud-bottom)-8px),calc(640px+var(--dock-h)+8px))]"]}>
   <DialogHeader id="sheet-title" title={looks[panel].title} {icon} class="shrink-0 [&_h2]:text-c"
-    close={{ id: "close-sheet", onclick: () => controls.sheet(undefined) }}>
+    subtitle={started ? tripStart : undefined} close={{ id: "close-sheet", onclick: () => controls.sheet(undefined) }}>
     {#snippet actions()}
       {#if panel === "saved" && controls.onShare}
         <HeaderButton id="share-saved" icon={icons.share} label={t("Share map or selected items")} onclick={() => controls.onShare?.()} />

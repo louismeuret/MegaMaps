@@ -28,11 +28,11 @@ import {
   type DangerLevel,
   type WaterLevel,
 } from "../viewer/navigation";
-import type { TrailPoint, Trip } from "../viewer/trail";
+import { placesNear, type TrailPoint, type Trip } from "../viewer/trail";
 import { lastUpdated, placeChanges, recordEdit } from "../viewer/place-history";
 import { allowCompass, compassNeedsPermission, speedDelays, watchCompass, type CompassSpeed } from "../viewer/compass";
 import { icons } from "./icons";
-import { logDate, nextName, plural, timeAgo, updatedAgo } from "./format";
+import { dayDate, logDate, nextName, plural, timeAgo, updatedAgo } from "./format";
 import { locale, t } from "../i18n";
 import { preference, setPreference } from "../preferences";
 import { orderPlaces, orderRoutes, placeOrders, routeOrders } from "./saved-order";
@@ -78,6 +78,8 @@ const wheelLabels: Record<WheelChoice, (marked: boolean) => string> = {
   back: (marked) => marked ? t("Go to last mark") : t("No mark yet"),
   trail: () => t("Mark where you are"),
 };
+/** One mark in a trip's log: when, the place it was near if any, and how far it came. */
+export interface TripMark { index: number; time: string; label: string; named: boolean; note: string }
 /** "2:05 PM": when a trip started or ended. */
 export const clock = (time: number) => new Date(time).toLocaleTimeString(locale, { hour: "numeric", minute: "2-digit" });
 /** A picked day as a time: today keeps the hour, an earlier day is noon, so it reads the same day anywhere. */
@@ -181,6 +183,9 @@ export class ViewerControls {
   markTime = $state("");
   /** The past trip whose summary is open. */
   viewingTrip = $state<string>();
+  /** That summary shows every mark, and which one the map is on. */
+  tripLogOpen = $state(false);
+  tripMark = $state<number>();
   nameTitle = $state("");
   nameValue = $state("");
   scaleMetresValue = $state<number | null | undefined>(null);
@@ -431,17 +436,16 @@ export class ViewerControls {
     const view = this.state.view;
     return view && { center: { ...view.center }, scale: view.scale };
   }
-  /** The map as it was when the last point was marked; older marks only center. */
-  private backToMark() {
-    const last = this.state.trail.at(-1);
-    if (!last) return;
-    if (last.view && this.viewer?.showView) this.viewer.showView(last.view);
-    else this.viewer?.jumpTo(last);
+  /** The map as it was when a point was marked; older marks only center. */
+  private backToMark(mark = this.state.trail.at(-1)) {
+    if (!mark) return;
+    if (mark.view && this.viewer?.showView) this.viewer.showView(mark.view);
+    else this.viewer?.jumpTo(mark);
   }
-  /** Trail's Go to last mark: the panel makes way for the map. */
-  backFromPanel() {
+  /** Trail's Last mark, or any mark in its list: the panel makes way for the map. */
+  backFromPanel(index = this.state.trail.length - 1) {
     this.sheet(undefined);
-    this.backToMark();
+    this.backToMark(this.state.trail[index]);
   }
   /** The red dot, read first: when it was marked. Edit offers Move and Delete. */
   private showMark() {
@@ -521,10 +525,60 @@ export class ViewerControls {
   private showTrip(trip: Trip) {
     this.closePlaceDetails();
     this.viewingTrip = trip.id;
-    const card = this.show("trip-dialog", false);
+    this.tripLogOpen = false;
+    this.tripMark = undefined;
+    this.show("trip-dialog", false);
+    this.frameTrip(trip);
+  }
+  /** The whole trip in the room its card leaves. */
+  private frameTrip(trip: Trip) {
+    flushSync();
+    const card = this.dialog("trip-dialog");
     this.viewer?.showTrip?.(trip.points);
     if (card) this.viewer?.cover?.(card.offsetTop);
     this.viewer?.fitPoints(trip.points);
+  }
+  /** The card folds its marks open or shut, and the map refits above it. */
+  toggleTripLog() {
+    const trip = this.viewedTrip();
+    if (!trip) return;
+    this.tripLogOpen = !this.tripLogOpen;
+    this.tripMark = undefined;
+    this.frameTrip(trip);
+  }
+  /** A row of the trip's log finds its mark on the map. */
+  pickTripMark(index: number) {
+    const trip = this.viewedTrip(), mark = trip?.points[index];
+    if (!trip || !mark) return;
+    this.tripMark = index;
+    this.viewer?.showTrip?.(trip.points, mark);
+    this.viewer?.jumpTo(mark);
+  }
+  renameTrip() {
+    const trip = this.viewedTrip();
+    if (trip) this.name(t("Rename trip"), this.tripTitle(trip), (name) => {
+      trip.name = name;
+      this.changed();
+    });
+  }
+  /** Its id ties a route to the trip it came from, so a trip is saved only once. */
+  private routeId = (trip: Trip) => `trip-${trip.id}`;
+  /** A trip walked is a way to walk again: its marks become a route, for Saved. */
+  saveTripRoute() {
+    const trip = this.viewedTrip();
+    if (!trip) return;
+    const id = this.routeId(trip);
+    if (this.state.routes.some((route) => route.id === id)) return;
+    const points = trip.points.map(({ x, y }) => ({ x, y }));
+    const name = this.tripName(trip);
+    this.state.routes.push({ id, name, points, created: Date.now(), draft: false });
+    track("route_saved", { points: points.length, edited: false });
+    this.changed();
+    this.showToast(t("{name} saved · {points}", { name, points: plural(points.length, "point") }), "done", () => {
+      this.state.routes = this.state.routes.filter((route) => route.id !== id);
+      this.changed();
+      this.showToast(t("Route removed"), "quiet");
+    });
   }
   /** The trip whose card is open. */
   viewedTrip() {
@@ -539,7 +593,48 @@ export class ViewerControls {
     if (!this.isOpen("marker-dialog")) this.viewer?.cover?.();
   }
   tripName(trip: Trip) {
-    return t("Trip {date}", { date: logDate(trip.points[0]!.time) });
+    return trip.name ?? t("Trip {date}", { date: logDate(trip.points[0]!.time) });
+  }
+  /** On its card, the year stands under the title to leave room for Edit. */
+  private tripTitle(trip: Trip) {
+    return trip.name ?? t("Trip {date}", { date: dayDate(trip.points[0]!.time) });
+  }
+  /** What the finished trip's card reads. Distance and pace need a scale, and
+   * places a place passed; without any, Marks keeps the cell from saying 0. */
+  tripCard(trip: Trip) {
+    const start = trip.points[0]!, scale = this.state.metresPerPixel;
+    const passed = [...new Set(placesNear(trip.points, this.state.markers, scale).filter((name) => name !== undefined))];
+    const metres = scale ? pathLength(trip.points) * scale : undefined, hours = (trip.ended - start.time) / 3_600_000;
+    const times = `${clock(start.time)} – ${clock(trip.ended)}`;
+    return {
+      title: this.tripTitle(trip),
+      times: `${trip.name ? logDate(start.time) : new Date(start.time).getFullYear()} · ${times}`,
+      stats: [
+        ...(metres !== undefined ? [{ id: "trip-distance", icon: icons.measure, label: t("Distance"), value: formatDistance(metres) }] : []),
+        { id: "trip-duration", icon: icons.timer, label: t("Time"), value: formatMinutes(Math.round(hours * 60)) },
+        ...(metres !== undefined ? [{ id: "trip-pace", icon: icons.pace, label: t("Pace"), value: hours ? t("{distance}/h", { distance: formatDistance(metres / hours) }) : "–" }] : []),
+        passed.length
+          ? { id: "trip-places", icon: icons.places, label: t("Places"), value: String(passed.length) }
+          : { id: "trip-count", icon: icons.pin, label: t("Marks"), value: String(trip.points.length) },
+      ],
+      marks: plural(trip.points.length, "mark"),
+      passed: passed.join(", "),
+      saved: this.state.routes.some((route) => route.id === this.routeId(trip)),
+    };
+  }
+  /** A trip's marks in order; the last of a finished one is where it ended. */
+  tripMarks(points: TrailPoint[], finished: boolean) {
+    const scale = this.state.metresPerPixel, places = placesNear(points, this.state.markers, scale);
+    return points.map((point, index): TripMark => {
+      const previous = points[index - 1];
+      return {
+        index,
+        time: clock(point.time),
+        label: places[index] ?? (finished && index === points.length - 1 ? t("End") : t("Mark {number}", { number: index + 1 })),
+        named: !!places[index],
+        note: !previous ? t("Start") : scale ? `+${formatDistance(pathLength([previous, point]) * scale)}` : "",
+      };
+    });
   }
   /** Deletes stay two taps, and a few seconds to change your mind after. */
   private deleted(label: string, restore: () => void) {
@@ -1573,7 +1668,8 @@ export class ViewerControls {
     return [...this.state.trips].reverse().map((trip): RowItem => ({
       key: trip.id,
       label: this.tripName(trip),
-      meta: [clock(trip.points[0]!.time),
+      // A name no longer says which day it was.
+      meta: [trip.name ? logDate(trip.points[0]!.time) : clock(trip.points[0]!.time),
         scale ? formatDistance(pathLength(trip.points) * scale) : plural(trip.points.length, "point"),
         formatMinutes(Math.round((trip.ended - trip.points[0]!.time) / 60_000))].join(" · "),
       icon: icons.trail,
@@ -1587,18 +1683,23 @@ export class ViewerControls {
       })],
     }));
   }
-  /** Before a trip: what it is and how to start. During one: how far it has come. */
+  /** During a trip: how far it has come and when it was last marked. */
   tripSummary() {
-    const trail = this.state.trail, start = trail[0], last = trail.at(-1);
-    if (!start || !last) return undefined;
-    const now = Date.now();
-    const started = dayValue(start.time) === dayValue(now) ? clock(start.time) : logDate(start.time);
+    const trail = this.state.trail, last = trail.at(-1);
+    if (!last) return undefined;
     const scale = this.state.metresPerPixel;
-    const marked = t("Last marked {when}", { when: timeAgo(last.time, now) });
     return {
-      title: t("Started {time} · {points}", { time: started, points: plural(trail.length, "point") }),
-      last: scale && trail.length > 1 ? `${formatDistance(pathLength(trail) * scale)} · ${marked}` : marked,
+      distance: scale ? formatDistance(pathLength(trail) * scale) : "–",
+      time: this.tripClock(),
+      last: timeAgo(last.time, Date.now()),
+      count: String(trail.length),
     };
+  }
+  /** The panel's subtitle during a trip. */
+  tripStarted() {
+    const start = this.state.trail[0];
+    if (!start) return undefined;
+    return t("Started {time}", { time: dayValue(start.time) === dayValue(Date.now()) ? clock(start.time) : logDate(start.time) });
   }
   /** The time since the trip started, on Trail, ticking each minute. */
   tripClock() {
