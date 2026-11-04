@@ -5,14 +5,16 @@
 - Keep things simple; apply YAGNI. Prefer inferred types and avoid `any`.
 - Propose bold ideas when they meaningfully improve the work.
 - Questions ask for answers, not file changes. Answer first, offer the change, and ask before editing.
+- The app has two uses: viewing a map at home and exploring on site, with editing in both. Never trade reliability for performance: bugs can't be debugged underground.
 
 ## UI
 
 - Mobile first, touch only: no keyboard controls, shortcuts or focus outlines.
+- For visible design changes, show 3–4 options as HTML previews before implementing. Don't use artifacts.
+- Mockups show an iPhone Pro Max screen: 440×956 CSS px at 1:1 zoom, with 62px top and 34px bottom safe areas, so controls and text appear at their real size.
 - Use only **Lucide icons**, except for the app logo and the cave entrance place icon (a Lucide-style redraw).
 - Use only **three font sizes**, with **14px as the minimum**.
 - Modal header buttons (Close, Edit, Share) share one tinted, outlined circle holding a Lucide icon at one size: **X**, **Pencil**, **Share2**. Edit sits beside Close.
-- Teach by doing: the coach gives one task at a time on the real map and moves on when the person does it. No demos to watch.
 - No handles on modals. Show a scroll indicator only when content overflows.
 - Scrolling must follow the user's movement smoothly, without jumps or teleporting.
 - Clicking a place opens readable details first; editing requires an explicit Edit action.
