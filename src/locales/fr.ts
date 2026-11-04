@@ -681,6 +681,18 @@ export const fr = {
   "Route names open as balloons, like place names.": "Les noms des itinéraires s’ouvrent en bulle, comme ceux des lieux.",
   "Settings shows the time of each version, not just the day.": "Réglages indique l’heure de chaque version, plus seulement le jour.",
   "Map previews in the main menu are square and no longer flash when you come back.": "Les aperçus des cartes du menu principal sont bien carrés et ne clignotent plus au retour.",
+  "Finished trips show distance, time, pace and places, with a logbook of marks, a name of their own and Save as route.": "Les parcours terminés indiquent la distance, la durée, l’allure et les lieux, avec un carnet de points, un nom à eux et Enregistrer comme itinéraire.",
+  "The Trail panel explains what a trip is for and how it works.": "Le panneau Parcours explique à quoi sert un parcours et comment il fonctionne.",
+  "The bottom bar shows how long a trip has run.": "La barre du bas indique depuis combien de temps dure le parcours.",
+  "The bottom bar is now Saved, Search, Trail, Measure and Add.": "La barre du bas regroupe désormais Enregistrés, Rechercher, Parcours, Mesurer et Ajouter.",
+  "Open panels take the bottom bar’s place, and show more on tall screens.": "Les panneaux ouverts prennent la place de la barre du bas et en montrent plus sur les grands écrans.",
+  "A running trip shows distance and time first, with End trip and Mark here within thumb’s reach.": "Un parcours en cours affiche d’abord la distance et la durée, avec Terminer et Marquer ici à portée de pouce.",
+  "Only the field you’re typing in moves for the keyboard, and the page dims around it.": "Seul le champ en cours de saisie se déplace pour le clavier, et la page s’assombrit autour de lui.",
+  "Screens, panels and new places animate as they open, with the same timing everywhere.": "Les écrans, les panneaux et les nouveaux lieux s’animent à l’ouverture, avec le même rythme partout.",
+  "A new place’s name starts empty and hints its kind; left empty, it takes that name.": "Le nom d’un nouveau lieu commence vide et suggère son type ; laissé vide, il prend ce nom.",
+  "On Android, sharing a map or saving a backup no longer fails with “Permission denied”: the file goes to your downloads instead.": "Sur Android, partager une carte ou enregistrer une sauvegarde n’échoue plus avec « Permission denied » : le fichier va dans vos téléchargements.",
+  "JPEG maps up to 16 megapixels import in browsers with WebAssembly turned off, and larger ones say what to do.": "Les cartes JPEG jusqu’à 16 mégapixels s’importent dans les navigateurs où WebAssembly est désactivé, et les plus grandes indiquent quoi faire.",
+  "What’s new always shows how much is left to read.": "Nouveautés indique toujours ce qu’il reste à lire.",
 } as const;
 
 /** Singular and plural, keyed by the English noun. */
