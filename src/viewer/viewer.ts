@@ -376,8 +376,8 @@ export class Viewer {
     this.invalidate();
   }
   /** A finished trip, drawn over the map while its summary is open. */
-  showTrip(points?: Point[]) {
-    this.overlay?.setTrip(points);
+  showTrip(points?: Point[], mark?: Point) {
+    this.overlay?.setTrip(points, mark);
     this.invalidate();
   }
   pulse(id: string) {

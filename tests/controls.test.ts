@@ -1655,8 +1655,10 @@ test("the Trail panel starts a trip, ends it with a summary, and keeps it in Pas
   assert.equal(text("trip-clock"), "1 h 35");
   click("open-trail");
   assert.equal(gone("trip-start"), true);
-  assert.equal(text("trip-summary"), "Started 2:05 PM · 2 points");
-  assert.equal(text("trip-last"), "100 m · Last marked 1 hour ago");
+  assert.equal(text("trip-started"), "Started 2:05 PM");
+  assert.deepEqual([text("trip-walked"), text("trip-time")], ["100 m", "1 h 35"]);
+  assert.equal(text("trip-last"), "1 hour ago");
+  assert.equal(text("trip-marks-count"), "2");
 
   // Ending keeps the trip and shows it whole, with how far and how long.
   click("trip-end");
@@ -1664,9 +1666,10 @@ test("the Trail panel starts a trip, ends it with a summary, and keeps it in Pas
   assert.equal(gone("trip-clock"), true, "the clock goes with the trip");
   assert.equal(state.trips.length, 1);
   assert.equal(isOpen("trip-dialog"), true);
-  assert.equal(text("trip-title"), "Trip Oct 20, 2026");
-  assert.equal(text("trip-times"), "2:05 PM – 3:40 PM");
-  assert.deepEqual([text("trip-distance"), text("trip-duration"), text("trip-points")], ["100 m", "1 h 35", "2"]);
+  assert.equal(text("trip-title"), "Trip Oct 20");
+  assert.equal(text("trip-times"), "2026 · 2:05 PM – 3:40 PM");
+  assert.deepEqual([text("trip-distance"), text("trip-duration"), text("trip-pace")], ["100 m", "1 h 35", "63 m/h"]);
+  assert.equal(text("trip-count"), "2", "with no place passed, the card counts marks instead of saying 0");
   assert.deepEqual(shown.at(-1), [{ x: 100, y: 100 }, { x: 100, y: 300 }].map((p, i) => ({ ...p, time: state.trips[0]!.points[i]!.time })));
   assert.equal(framed.length, 1, "the map frames the whole trip");
   click("trip-close");
@@ -1687,6 +1690,116 @@ test("the Trail panel starts a trip, ends it with a summary, and keeps it in Pas
   assert.equal($("sheet").hidden, true);
   assert.equal(text("trip-duration"), "1 h 35");
   assert.equal(shown.at(-1)?.length, 2);
+});
+
+test("a live trip's panel marks from a button, lists its marks, and leaves past trips for after", async (t) => {
+  const map = mapRecord("trail-live");
+  await saveMap(map);
+  const state = defaultNavigation(map.id);
+  state.metresPerPixel = 0.5;
+  state.markers.push({ id: "z", point: { x: 100, y: 310 }, label: "Salle Z", description: "", kind: "landmark", created: 0 });
+  const tools: string[] = [];
+  const views: unknown[] = [];
+  t.mock.timers.enable({ apis: ["Date", "setTimeout"], now: new Date(2026, 9, 20, 14, 5).getTime() });
+  const controls = openMap(t, map, state, {
+    setTool(tool) { tools.push(tool); },
+    showView(view) { views.push(view); },
+  });
+  const rows = (id: string) => [...$(id).querySelectorAll("[data-mark]")].map((row) => row.textContent!.replace(/\s+/g, " ").trim());
+  click("open-trail");
+  click("trip-start");
+  controls.options().onTap({ x: 100, y: 100 });
+  t.mock.timers.tick(10 * 60_000);
+  state.view = { center: { x: 7, y: 8 }, scale: 1, rotation: 0 };
+
+  // Mark here is the same tap on the map that started the trip.
+  click("open-trail");
+  click("trip-mark");
+  assert.equal(tools.at(-1), "trail");
+  assert.equal($("sheet").hidden, true);
+  controls.options().onTap({ x: 100, y: 300 });
+  assert.equal(state.trail.length, 2);
+
+  click("open-trail");
+  assert.equal(gone("trip-log-live"), true);
+  click("trip-marks");
+  assert.deepEqual(rows("trip-log-live"), ["2:15 PM Salle Z +100 m", "2:05 PM Mark 1 Start"], "newest first, named by the place beside it");
+  assert.equal(gone("trip-list"), true, "past trips wait until no trip is under way");
+
+  // A mark in the list goes back to the view it was made in.
+  click($("trip-log-live").querySelector("[data-mark='1']")!);
+  assert.equal($("sheet").hidden, true);
+  assert.deepEqual(views, [{ center: { x: 7, y: 8 }, scale: 1 }]);
+});
+
+test("without a scale, a finished trip's card leaves out what it can't measure", async (t) => {
+  const map = mapRecord("trail-no-scale");
+  await saveMap(map);
+  const state = defaultNavigation(map.id);
+  const time = new Date(2026, 9, 20, 14, 5).getTime();
+  state.trips.push({ id: "walk", ended: time + 60 * 60_000, points: [{ x: 0, y: 0, time }, { x: 0, y: 100, time: time + 60_000 }] });
+  openMap(t, map, state);
+  click("open-trail");
+  click($("trip-list").querySelector("[data-row] button")!);
+  assert.deepEqual(["trip-distance", "trip-pace", "trip-places"].map(gone), [true, true, true]);
+  assert.deepEqual([text("trip-duration"), text("trip-count")], ["1 h 00", "2"]);
+});
+
+test("a finished trip can be renamed, read mark by mark, and saved as a route once", async (t) => {
+  const map = mapRecord("trail-card");
+  await saveMap(map);
+  const state = defaultNavigation(map.id);
+  state.metresPerPixel = 0.5;
+  const time = new Date(2026, 9, 20, 14, 5).getTime();
+  state.trips.push({
+    id: "walk", ended: time + 60 * 60_000,
+    points: [{ x: 0, y: 0, time }, { x: 0, y: 100, time: time + 20 * 60_000 }, { x: 100, y: 100, time: time + 40 * 60_000 }],
+  });
+  state.markers.push({ id: "lac", point: { x: 0, y: 105 }, label: "Lac", description: "", kind: "landmark", created: 0 });
+  const shown: [Point[] | undefined, Point | undefined][] = [];
+  const framed: Point[][] = [];
+  const jumped: Point[] = [];
+  t.mock.timers.enable({ apis: ["Date", "setTimeout"], now: time + 2 * 3600_000 });
+  const controls = openMap(t, map, state, {
+    fitPoints(points) { framed.push(points); },
+    jumpTo(point) { jumped.push(point); },
+    showTrip(points, mark) { shown.push([points, mark]); },
+  });
+  click("open-trail");
+  click($("trip-list").querySelector("[data-row] button")!);
+  assert.equal(text("trip-places"), "1");
+  assert.equal(gone("trip-count"), true);
+  assert.equal(text("trip-passed"), "Lac");
+
+  // Folding open lists every mark, and the map refits above the taller card.
+  assert.equal(gone("trip-log"), true);
+  const fits = framed.length;
+  click("trip-log-toggle");
+  assert.deepEqual([...$("trip-log").querySelectorAll("[data-mark]")].map((row) => row.textContent!.replace(/\s+/g, " ").trim()),
+    ["2:05 PM Mark 1 Start", "2:25 PM Lac +50 m", "2:45 PM End +50 m"]);
+  assert.equal(framed.length, fits + 1);
+  click($("trip-log").querySelector("[data-mark='1']")!);
+  assert.deepEqual(jumped, [state.trips[0]!.points[1]]);
+  assert.equal(shown.at(-1)?.[1], state.trips[0]!.points[1], "the map marks it too");
+  assert.equal($("trip-log").querySelector("[data-mark='1']")?.getAttribute("aria-pressed"), "true");
+
+  click("trip-edit");
+  type("name-input", "Salle Z loop");
+  controls.saveName();
+  flushSync();
+  assert.equal(text("trip-title"), "Salle Z loop");
+  assert.equal(text("trip-times"), "Oct 20, 2026 · 2:05 PM – 3:05 PM", "with a name, the day has to be said");
+  assert.equal(state.trips[0]!.name, "Salle Z loop");
+
+  click("trip-route");
+  assert.deepEqual(state.routes.map(({ name, points }) => ({ name, points })),
+    [{ name: "Salle Z loop", points: [{ x: 0, y: 0 }, { x: 0, y: 100 }, { x: 100, y: 100 }] }]);
+  assert.equal($("trip-route").getAttribute("aria-label"), "Saved as route");
+  click("trip-route");
+  assert.equal(state.routes.length, 1, "a trip is saved only once");
+  click("toast-undo");
+  assert.deepEqual(state.routes, []);
+  assert.equal($("trip-route").getAttribute("aria-label"), "Save as route");
 });
 
 test("a map reopened in Compass mode asks for the compass again on the first tap", async (t) => {

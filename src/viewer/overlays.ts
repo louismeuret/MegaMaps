@@ -112,6 +112,8 @@ export class NavigationOverlay {
   private measure?: Point[];
   /** A finished trip being looked back on. */
   private trip?: Point[];
+  /** The mark of that trip being read about. */
+  private tripMark?: Point;
   private state?: NavigationState;
   /** Places drawn so far: one missing from it was just added and pops in. */
   private placed?: Set<string>;
@@ -162,8 +164,9 @@ export class NavigationOverlay {
     this.measure = points;
     if (this.state) this.rebuild(this.state);
   }
-  setTrip(points?: Point[]) {
+  setTrip(points?: Point[], mark?: Point) {
     this.trip = points;
+    this.tripMark = mark;
     if (this.state) this.rebuild(this.state);
   }
   // Search owns matching place labels, avoiding duplicate callouts at the same pin.
@@ -254,6 +257,11 @@ export class NavigationOverlay {
         icon.setAttribute("stroke", stroke);
         icon.setAttribute("stroke-width", "3.6");
       }
+      if (this.tripMark)
+        pin(trip, this.tripMark).body.append(
+          node("circle", { r: "14", fill: "none", stroke: "#fff", "stroke-width": "2.5" }),
+          node("circle", { r: "6", fill: TRAIL_COLOR, stroke: CASING, "stroke-width": "2" }),
+        );
     }
     // Lines first so every pin and label sits above them.
     const routes = group("routes");

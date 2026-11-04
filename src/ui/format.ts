@@ -87,6 +87,10 @@ export function timeAgo(time: number, now = Date.now()) {
     : relative.format(-Math.round(minutes / 1440), "day");
 }
 
+/** "Nov 01": a day whose year is shown beside it, or doesn't matter. */
+export const dayDate = (time: number) =>
+  new Date(time).toLocaleDateString(locale, { month: "short", day: "2-digit" });
+
 /** A log entry's day, with its year: logs reach back further than this year. */
 export const logDate = (time: number) =>
   new Date(time).toLocaleDateString(locale, { year: "numeric", month: "short", day: "2-digit" });

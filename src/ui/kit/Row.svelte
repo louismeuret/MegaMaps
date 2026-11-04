@@ -8,7 +8,7 @@
   let {
     tag = "button", id, icon, tone = "var(--neon-view)", label, hint, hintId, value, valueId, arrow = false,
     external = false, disabled = false, hidden = false, class: className = "", iconClass = "", leading,
-    children, onclick, href, current, dot, ...rest
+    children, onclick, href, current, expanded, dot, ...rest
   }: {
     tag?: "button" | "label" | "a" | "div" | "li"; id?: string; icon?: string; tone?: string; label: string;
     hint?: string; hintId?: string; value?: string; valueId?: string; arrow?: boolean; external?: boolean;
@@ -18,6 +18,8 @@
     /** A control at the row's end, such as a select or a switch. */
     children?: Snippet;
     onclick?: (event: MouseEvent) => void; href?: string; current?: boolean;
+    /** Whether what the row folds open is showing; set, the row ends in a chevron. */
+    expanded?: boolean;
     /** A dot on the icon: "ready" pulses lime, "due" stays in the backup colour. */
     dot?: "ready" | "due" | "";
     /** data-* hooks, such as which help topic a link opens. */
@@ -26,7 +28,7 @@
   const interactive = $derived(tag === "button" || tag === "a");
 </script>
 
-<svelte:element this={tag} {id} {hidden} {onclick} {href} aria-current={current || undefined} {...rest}
+<svelte:element this={tag} {id} {hidden} {onclick} {href} aria-current={current || undefined} aria-expanded={expanded} {...rest}
   type={tag === "button" ? "button" : undefined} disabled={tag === "button" ? disabled : undefined}
   target={external ? "_blank" : undefined} rel={external ? "noopener" : undefined}
   class={[
@@ -48,6 +50,9 @@
     class="mt-2 block text-small text-muted empty:hidden">{hint}</small>{/if}</span>
   {#if value !== undefined}<span id={valueId} class="text-small text-muted tabular-nums">{value}</span>{/if}
   {@render children?.()}
+  {#if expanded !== undefined}
+    <Icon svg={icons.chevronDown} class={["size-18 text-muted transition-transform duration-fast", expanded && "rotate-180"].filter(Boolean).join(" ")} />
+  {/if}
   {#if external}
     <Icon svg={icons.externalLink} class="size-18 text-muted" />
   {:else if arrow}
