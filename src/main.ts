@@ -753,7 +753,8 @@ const offeredMaps = new Set<string>();
 let offeredMap: MapRecord | undefined;
 let offerAccepted = false;
 function offerTextDetection(map: MapRecord, update = false) {
-  if (offeredMaps.has(map.id) || ocrOfferDialog.open) return;
+  // Detection runs on WebAssembly, so a browser without it could only fail.
+  if (typeof WebAssembly === "undefined" || offeredMaps.has(map.id) || ocrOfferDialog.open) return;
   offeredMaps.add(map.id);
   offeredMap = map;
   offerAccepted = false;

@@ -584,6 +584,7 @@ export const fr = {
   "Waist+": "Taille+",
   "Walking speed": "Vitesse de marche",
   "Water level": "Niveau d’eau",
+  "This browser has WebAssembly turned off, which limits JPEG maps to 16 megapixels. Allow it for this site in the browser’s security settings, use another browser, or import a non-interlaced PNG.": "Ce navigateur a désactivé WebAssembly, ce qui limite les cartes JPEG à 16 mégapixels. Autorisez-le pour ce site dans les réglages de sécurité du navigateur, changez de navigateur ou importez un PNG non entrelacé.",
   "WebP and interlaced PNG are limited to 16 megapixels in this version. For larger maps use JPEG or non-interlaced PNG.": "Les WebP et PNG entrelacés sont limités à 16 mégapixels dans cette version. Pour de plus grandes cartes, utilisez un JPEG ou un PNG non entrelacé.",
   "What would you like to add?": "Que voulez-vous ajouter ?",
   "With map image": "Avec l’image de la carte",
