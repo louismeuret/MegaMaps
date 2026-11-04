@@ -3,7 +3,7 @@
   import { displayName, formatBytes, plural } from "./format";
   import { icons } from "./icons";
   import { placeIcon } from "./place-icon";
-  import { downloadFile } from "./save-file";
+  import { shareOrDownload } from "./save-file";
   import { t, errorMessage } from "../i18n";
   import type { MapRecord } from "../types";
   import { routeColor, type NavigationState } from "../viewer/navigation";
@@ -82,7 +82,7 @@
     }
   }
 
-  function send() {
+  async function send() {
     if (!file || exporting) return;
     failure = undefined;
     const sent = {
@@ -90,23 +90,20 @@
       routes: chosen.filter((item) => item.kind === "route").length,
       image: includeImage,
     };
-    // Browsers without file sharing (e.g. desktop Firefox) get a download instead.
-    if (!navigator.canShare?.({ files: [file] }) || !navigator.share) {
-      downloadFile(file, dialog);
-      track("share_exported", { ...sent, method: "download" });
-      savedFile = file;
-      return;
-    }
     exporting = true;
-    // The file is prepared before this tap, preserving native user activation.
-    // Only the file: iOS saves a title or text as a second file beside it.
     const shared = file;
-    navigator.share({ files: [file] }).then(() => {
-      track("share_exported", { ...sent, method: "share" });
-      dialog.close();
-    }, (error) => {
-      if (!(error instanceof DOMException && error.name === "AbortError")) failure = { file: shared, message: errorMessage(error) };
-    }).finally(() => { exporting = false; });
+    try {
+      // The file is prepared before this tap, preserving native user activation.
+      const outcome = await shareOrDownload(shared, dialog);
+      if (outcome === "cancelled") return;
+      track("share_exported", { ...sent, method: outcome === "saved" ? "download" : "share" });
+      if (outcome === "saved") savedFile = shared;
+      else dialog.close();
+    } catch (error) {
+      failure = { file: shared, message: errorMessage(error) };
+    } finally {
+      exporting = false;
+    }
   }
 
   function pickAll(checked: boolean) {

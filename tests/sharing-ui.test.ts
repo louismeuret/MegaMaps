@@ -118,6 +118,30 @@ test("share dialog summarizes the file, picks items per kind, toggles the image,
   assert.equal(el<HTMLDialogElement>("share-dialog").open, false, "a completed share closes the dialog");
 });
 
+test("a file Chrome refuses to share is saved instead, with the dialog left open to say so", async () => {
+  const { ui, el, map, state, click } = await setup();
+  await ui.openExport(map, state);
+  Object.defineProperty(globalThis, "navigator", { value: {
+    canShare: () => true, share: async () => { throw new DOMException("Permission denied", "NotAllowedError"); },
+  }, configurable: true });
+  const saved: string[] = [];
+  const { createObjectURL } = URL;
+  const anchorClick = HTMLAnchorElement.prototype.click;
+  URL.createObjectURL = () => "blob:share";
+  HTMLAnchorElement.prototype.click = function () { saved.push(this.download); };
+  try {
+    click("share-send");
+    await settle();
+  } finally {
+    URL.createObjectURL = createObjectURL;
+    HTMLAnchorElement.prototype.click = anchorClick;
+  }
+  assert.equal(saved.length, 1);
+  assert.match(saved[0]!, /\.megamap$/);
+  assert.equal(el<HTMLDialogElement>("share-dialog").open, true);
+  assert.match(el("share-size").textContent!, /File saved/);
+});
+
 test("share dialog with no annotations offers the image only", async () => {
   const { ui, el, map, click } = await setup();
   await ui.openExport(map, defaultNavigation(map.id));
