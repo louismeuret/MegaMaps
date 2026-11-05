@@ -8,7 +8,7 @@ import { defaultNavigation, type NavigationState, type PlannedRoute } from "../s
 import { saveMap } from "../src/storage/database";
 import { loadNavigation } from "../src/storage/navigation";
 import { savePhoto } from "../src/storage/photos";
-import type { Point } from "../src/viewer/camera";
+import { worldToScreen, type Point } from "../src/viewer/camera";
 import type { MapRecord } from "../src/types";
 import type { MapSearchMatch } from "../src/viewer/map-search";
 
@@ -1848,4 +1848,143 @@ test("dark map, brightness and layers restyle the map without rebuilding its pla
   assert.equal(state.inverted, !defaultNavigation(map.id).inverted);
   assert.equal(state.dimming, 0.75);
   assert.equal(state.layers.labels, false);
+});
+
+test("calibrating matches a spot, then a second one or the rulers", async (t) => {
+  const searches: string[] = [];
+  t.mock.method(globalThis, "fetch", async (url: string) => {
+    searches.push(url);
+    return new Response(JSON.stringify([{ lat: "48.8534", lon: "2.3488" }]));
+  });
+  const map = mapRecord("line-up");
+  await saveMap(map);
+  const state = defaultNavigation(map.id);
+  const tools: string[] = [], moved: Point[] = [];
+  // What the streets' cross is on, in Mercator; each step puts it where it needs.
+  let streets: Point = { x: 0.5, y: 0.34 };
+  const crosses = (x: number, y: number, place: Point, on = state) => {
+    on.view = { center: { x, y }, scale: 1, rotation: 0 };
+    streets = place;
+  };
+  const viewer = (into: Point[]) => ({
+    setTool(tool: string) { tools.push(tool); }, restyle() {},
+    streetsCenter: () => streets,
+    streetsScale: () => 2 ** 24,
+    moveStreets(center: Point) { into.push(center); },
+  });
+  const controls = openMap(t, map, state, viewer(moved));
+  const calibrate = () => { controls.calibrate(); flushSync(); };
+  const drag = (id: string, from: number, to: number) => {
+    $(id).setPointerCapture = () => {};
+    fire(id, "pointerdown", { clientX: from, pointerId: 1 });
+    fire(id, "pointermove", { clientX: to, pointerId: 1 });
+    fire(id, "pointerup", { clientX: to, pointerId: 1 });
+  };
+
+  calibrate();
+  assert.equal(tools.at(-1), "match", "no scale or north is asked for first");
+  await settle();
+  type("place-query", "Rue Saint-Jacques");
+  submit("place-search");
+  await settle();
+  await settle();
+  assert.match(searches[0]!, /q=Rue%20Saint-Jacques/);
+  assert.equal(moved.length, 1, "the streets go there");
+
+  crosses(100, 100, { x: 0.5, y: 0.34 });
+  click("tool-done");
+  assert.equal(tools.at(-1), "match", "the first spot asks what's next");
+  assert.ok(gone("place-search"));
+  assert.ok($("use-rulers"), "the rulers");
+  assert.equal(text("tool-done"), "Match spot 2", "or a second spot");
+
+  crosses(120, 100, { x: 0.501, y: 0.34 });
+  click("tool-done");
+  assert.equal(tools.at(-1), "match", "too close to the first spot");
+  assert.equal($("tool-message").textContent, "Pick a spot further from spot 1");
+
+  // East on the streets is down on the map, so the map's north is a quarter turn off.
+  crosses(100, 900, { x: 0.501, y: 0.34 });
+  click("tool-done");
+  assert.equal(tools.at(-1), "check", "the second spot places the map by itself");
+  assert.ok(state.geo);
+  assert.equal(text("calibrate-rotation-value"), "90°", "and the rulers show what it found");
+  assert.equal(state.streets, undefined, "nothing is kept yet");
+
+  click("match-spots");
+  assert.equal(tools.at(-1), "match", "going back keeps the first spot");
+  assert.equal(state.geo, undefined);
+  click("tool-done");
+  assert.equal(tools.at(-1), "check");
+
+  click("tool-done");
+  assert.equal(state.streets, true, "the streets stay on");
+  assert.equal(tools.at(-1), "browse");
+  assert.equal(state.northOffset, 90);
+  const metres = state.metresPerPixel!;
+  assert.ok(metres > 0);
+
+  // Lined up, Calibrate goes straight to the rulers, which turn the map about a fixed spot.
+  const placed = () => state.geo!;
+  crosses(500, 500, { x: 0.6, y: 0.34 });
+  calibrate();
+  assert.equal(tools.at(-1), "check");
+  const pivot = worldToScreen(placed(), { x: 500, y: 500 }), { scale } = placed();
+  click("calibrate-rotation-more");
+  assert.equal(text("calibrate-rotation-value"), "90.1°", "+ is the smallest step you can read");
+  click("calibrate-rotation-less");
+  assert.equal(text("calibrate-rotation-value"), "90°");
+  click("calibrate-scale-more");
+  const nudged = placed().scale / scale;
+  assert.ok(nudged > 1 && nudged < 1.01, "a nudge barely changes the size");
+  drag("calibrate-scale", 300, 299);
+  const slow = placed().scale / scale / nudged;
+  drag("calibrate-scale", 300, 240);
+  assert.ok(slow > 1, "the ruler moving left counts up");
+  assert.ok(Math.log(placed().scale / scale / nudged / slow) > 60 * Math.log(slow), "a quick drag covers far more than a slow one");
+  drag("calibrate-rotation", 300, 260);
+  assert.equal(state.northOffset, 90, "nothing is kept yet");
+  const held = worldToScreen(placed(), { x: 500, y: 500 });
+  assert.ok(Math.hypot(held.x - pivot.x, held.y - pivot.y) < 1e-12, "the spot stays put");
+  click("tool-done");
+  assert.notEqual(state.northOffset, 90, "the north follows");
+  assert.ok(state.metresPerPixel! > metres, "and the scale");
+
+  // The scale set with the Measure tool can always be gone back to.
+  state.measuredScale = 0.5;
+  calibrate();
+  click("calibrate-scale-reset");
+  click("tool-done");
+  assert.ok(Math.abs(state.metresPerPixel! - 0.5) < 1e-9);
+  assert.equal(state.measuredScale, 0.5);
+
+  // One spot moves a lined-up map, keeping its scale and north.
+  const before = placed(), northBefore = state.northOffset, metresBefore = state.metresPerPixel;
+  calibrate();
+  click("match-spots");
+  assert.equal(tools.at(-1), "match");
+  crosses(500, 500, { x: 0.7, y: 0.34 });
+  click("tool-done");
+  click("use-rulers");
+  assert.equal(tools.at(-1), "check");
+  assert.equal(placed().scale, before.scale);
+  assert.equal(placed().rotation, before.rotation);
+  click("tool-done");
+  assert.equal(state.metresPerPixel, metresBefore, "one spot says nothing new about the scale");
+  assert.equal(state.northOffset, northBefore);
+
+  // Another map starts where this one went, and the rulers start from how it looks.
+  await settle();
+  const other = defaultNavigation("other"), started: Point[] = [];
+  const next = openMap(t, { ...map, id: "other" }, other, viewer(started));
+  next.calibrate();
+  for (let waits = 0; waits < 20 && !started.length; waits++) await settle();
+  assert.equal(started.length, 1, "the streets start where the last map was");
+  assert.equal(searches.length, 1);
+  crosses(100, 100, { x: 0.5, y: 0.34 }, other);
+  click("tool-done");
+  click("use-rulers");
+  assert.equal(other.geo?.scale, 2 ** -24, "as big as it shows beside the streets");
+  click("tool-cancel");
+  assert.equal(other.geo, undefined, "× leaves the map as it was");
 });

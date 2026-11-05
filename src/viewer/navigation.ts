@@ -2,6 +2,7 @@ import { t } from "../i18n";
 import type { Camera, Point, Size } from "./camera";
 import { screenToWorld, cameraAt } from "./camera";
 import { isTrailPoint, isTrip, type TrailPoint, type Trip } from "./trail";
+import type { Geo } from "./geo";
 export interface SavedView {
   center: Point;
   scale: number;
@@ -113,6 +114,12 @@ export interface NavigationState {
   /** Incremented by Replace so older windows cannot restore removed annotations. */
   annotationRevision?: number;
   layers: Layers;
+  /** Where the map lies on Earth, once calibrated against the streets. */
+  geo?: Geo;
+  /** The scale last set with the Measure tool: calibrating replaces `metresPerPixel`, this stays to go back to. */
+  measuredScale?: number;
+  /** Streets show through the map; only once it is lined up. */
+  streets?: boolean;
 }
 /** Slightly dimmed by default so routes and places stand out from the map. */
 export const DEFAULT_DIMMING = 0.85;
@@ -120,8 +127,9 @@ export const BRIGHTNESS_LEVELS = [1, DEFAULT_DIMMING, 0.75, 0.65, 0.55] as const
 export const brightnessPercent = (level: number) => Math.round(level * 100);
 /** marker: tap to drop a new place · route: draw/edit · move: reposition a place ·
  *  measure: tap a line to read its length · scale: tap two ends of a known length ·
- *  trail: tap where you are */
-export type Tool = "browse" | "marker" | "route" | "move" | "measure" | "scale" | "trail";
+ *  trail: tap where you are · match: find two spots on the map and on the streets ·
+ *  check: fine-tune its scale and turn over the streets, with rulers */
+export type Tool = "browse" | "marker" | "route" | "move" | "measure" | "scale" | "trail" | "match" | "check";
 export function defaultNavigation(mapId: string): NavigationState {
   return {
     mapId,
