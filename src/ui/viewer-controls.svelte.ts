@@ -2,7 +2,7 @@ import { flushSync } from "svelte";
 import { SvelteSet } from "svelte/reactivity";
 import { showDialog } from "./dialog";
 import type { MapRecord } from "../types";
-import type { Point } from "../viewer/camera";
+import { worldToScreen, type Point } from "../viewer/camera";
 import type { DarkMode } from "../viewer/appearance";
 import { NavigationPersistence, loadNavigation } from "../storage/navigation";
 import { loadPhoto, savePhoto } from "../storage/photos";
@@ -43,6 +43,8 @@ import { normalizeText, ocrLabelAt, type OcrIndex } from "../ocr/index";
 import { matchPoints, searchMap, type MapSearchMatch } from "../viewer/map-search";
 import { track } from "../stats";
 import { formatDistance, formatMinutes, formatWalk, pathLength, travelSummary } from "../viewer/measure";
+import { geoMetresPerPixel, geoNorth, pinGeo, placeGeo, spotsGeo, spotsTooClose, toLonLat, toMercator, type Geo, type Spot } from "../viewer/geo";
+import { loadSetting, saveSetting } from "../storage/settings";
 
 export const sheets = ["trail", "display", "rotation", "saved", "add"] as const;
 export type Sheet = (typeof sheets)[number] | "search";
@@ -103,6 +105,8 @@ const COMPASS_WAIT_MS = 3000;
 const COMPASS_STEP = 2;
 /** …and waits for readings to hold within this many degrees of their average. */
 const COMPASS_HOLD = 15;
+/** What one step of the Calibrate rulers changes: the map's size by a twentieth of a percent, its turn by a twentieth of a degree. */
+const SCALE_STEP = 0.0005, TURN_STEP = (0.05 * Math.PI) / 180;
 /** Height of one north wheel row, as the wheel draws it. */
 export const NORTH_ROW_PX = 32;
 const darkMessages: Record<DarkMode["kind"], string> = {
@@ -116,13 +120,27 @@ const darkMessages: Record<DarkMode["kind"], string> = {
 // map's saved navigation is read again each time `tick` moves.
 export class ViewerControls {
   private viewer?: Pick<Viewer, "setTool" | "updateNavigation" | "jumpTo" | "fitPoints"> &
-    Partial<Pick<Viewer, "setMeasure" | "restyle" | "orient" | "straighten" | "setSearch" | "refreshLabels" | "previewPlace" | "pulse" | "reveal" | "showing" | "cover" | "select" | "showTrip" | "showView">>;
+    Partial<Pick<Viewer, "setMeasure" | "moveStreets" | "streetsCenter" | "streetsScale" | "markSpot" | "restyle" | "orient" | "straighten" | "setSearch" | "refreshLabels" | "previewPlace" | "pulse" | "reveal" | "showing" | "cover" | "select" | "showTrip" | "showView">>;
   /** Bumped whenever the saved navigation changes, so whatever shows it is worked out again. */
   tick = $state(0);
   tool = $state<Tool>("browse");
   openSheet = $state<Sheet>();
   /** The Trail tool is moving the last mark rather than adding one. */
   movingMark = $state(false);
+  /** Where the map lay before lining up began, for × (cancel). */
+  private geoBefore?: Geo;
+  /** The spots matched so far, on the map and on the streets. */
+  spots = $state.raw<Spot[]>([]);
+  /** What the rulers turn and resize the map about. */
+  private pivot?: Spot;
+  /** The rulers changed the map's scale or turn. */
+  private adjusted = false;
+  /** How the search or the last spot went, shown instead of the hint. */
+  matchMessage = $state("");
+  /** The town or street being searched for. */
+  placeQuery = $state("");
+  /** The task card's height: the map and the streets share what's above it. */
+  toolHeight = $state(0);
   /** A Delete or × waiting for its second tap. */
   confirming = $state<string>();
   cardDeleteArmed = $state<CardDelete>();
@@ -317,6 +335,7 @@ export class ViewerControls {
       navigation: this.state,
       overlay: this.root.querySelector<SVGSVGElement>("#map-overlay")!,
       searchOverlay: this.root.querySelector<SVGSVGElement>("#search-overlay")!,
+      streetCanvas: this.root.querySelector<HTMLCanvasElement>("#street-canvas")!,
       onView: () => {
         this.persistence.moved();
       },
@@ -968,7 +987,7 @@ export class ViewerControls {
   saveScale() {
     const metres = this.scaleMetres, pixels = pathLength(this.scalePoints);
     if (!metres || !pixels) return;
-    this.state.metresPerPixel = metres / pixels;
+    this.state.metresPerPixel = this.state.measuredScale = metres / pixels;
     this.close("scale-dialog");
     this.scalePoints = [];
     this.measureHistory = [];
@@ -1092,6 +1111,7 @@ export class ViewerControls {
     else if (this.tool === "measure") this.closeMeasure();
     else if (this.tool === "scale") this.cancelScale();
     else if (this.tool === "move") this.finishMove(false);
+    else if (this.tool === "match" || this.tool === "check") this.cancelMatch();
     else this.mode("browse");
   }
   /** The task card's pencil: a route's name, or the scale Measure works with. */
@@ -1107,6 +1127,8 @@ export class ViewerControls {
   toolDone() {
     if (this.tool === "move") this.finishMove(true);
     else if (this.tool === "scale") this.askScaleLength();
+    else if (this.tool === "match") this.matchSpot();
+    else if (this.tool === "check") this.finishMatch();
     else this.finishRoute();
   }
   /** Steps back through this session's taps and drags; once those run out, it keeps removing the last point. */
@@ -1556,6 +1578,7 @@ export class ViewerControls {
     const tape = measuring ? this.tape() : [];
     const metres = this.tool === "measure" && scale && tape.length > 1 ? pathLength(tape) * scale : undefined;
     const routeMetres = scale && count > 1 ? pathLength(route!.points) * scale : undefined;
+    const spotMatched = this.tool === "match" && !!this.spots.length;
     const texts: Record<Tool, [string, string, string]> = {
       browse: ["", "", ""],
       move: [icons.move, this.movingPlace()?.label ?? t("Place"), t("Drag the pin, or tap where it goes")],
@@ -1587,6 +1610,10 @@ export class ViewerControls {
         tape.length > 1 ? t("Drag the ends to adjust, then tap Next")
           : tape.length ? t("Tap the other end") : t("Tap one end of the scale bar or of a known length"),
       ],
+      match: [icons.map, this.spots.length ? t("Spot 1 matched") : t("Match a spot"), this.matchMessage ||
+        (this.spots.length ? t("Match a second spot to set the scale and rotation automatically, or use the rulers.")
+          : t("Find a town or street, then put both crosses on the same corner"))],
+      check: [icons.map, t("Calibrate"), t("Drag a ruler to resize or turn your map")],
     };
     const [icon, title, message] = texts[this.tool];
     return {
@@ -1598,11 +1625,188 @@ export class ViewerControls {
       actions: this.tool !== "browse" && this.tool !== "marker" && this.tool !== "trail",
       undo: this.tool === "route" || measuring,
       canUndo: measuring ? !!tape.length || !!this.measureHistory.length : !!count || !!this.routeHistory.length,
+      undoSpot: spotMatched,
+      useSliders: spotMatched,
+      matchSpots: this.tool === "check",
+      rulers: this.tool === "check" ? this.rulerValues() : undefined,
+      search: this.tool === "match" && !this.spots.length,
       // Measuring has nothing to save, so × is how it ends; the scale goes on to its length.
       done: this.tool !== "measure",
-      next: this.tool === "scale",
+      doneIcon: this.tool === "scale" ? icons.next : this.tool === "match" ? icons.pair : icons.check,
+      doneLabel: this.tool === "scale" ? t("Next")
+        : this.tool === "match" ? t("Match spot {number}", { number: this.spots.length + 1 }) : t("Done"),
       canFinish: !((this.tool === "route" || this.tool === "scale") && (this.tool === "route" ? count : tape.length) < 2),
     };
+  }
+  streetsView() {
+    const placed = !!this.state.geo;
+    return { placed, on: placed && !!this.state.streets, status: placed ? t("Lined up with OpenStreetMap") : t("Line up the map first") };
+  }
+  setStreets(on: boolean) {
+    this.state.streets = on;
+    this.changed(true);
+  }
+  /** What the rulers are at, in words. */
+  private rulerValues() {
+    const geo = this.state.geo;
+    if (!geo) return { scale: "", rotation: "", measured: false };
+    return {
+      measured: !!this.scaleToKeep(),
+      scale: t("1 px = {metres} m", { metres: geoMetresPerPixel(geo, this.map).toLocaleString(locale, { maximumSignificantDigits: 4 }) }),
+      rotation: `${geoNorth(geo).toLocaleString(locale, { maximumFractionDigits: 1 })}°`,
+    };
+  }
+  /** The map's point under the middle of its half, where the cross is. */
+  private viewCenter() {
+    return this.state.view?.center ?? { x: this.map.width / 2, y: this.map.height / 2 };
+  }
+  /** A map lined up before goes straight to its rulers; a new one starts by matching a spot. */
+  calibrate() {
+    if (this.tool !== "browse") return;
+    this.closePlaceDetails();
+    const geo = this.state.geo;
+    this.geoBefore = geo;
+    this.spots = [];
+    this.adjusted = false;
+    this.matchMessage = "";
+    this.placeQuery = "";
+    if (!geo) {
+      this.mode("match");
+      return this.findStreets();
+    }
+    const map = { ...this.viewCenter() };
+    this.pivot = { map, place: worldToScreen(geo, map) };
+    this.mode("check");
+    this.viewer?.markSpot?.(this.pivot);
+  }
+  /** The streets start where the map is, or where the last map went. */
+  private findStreets() {
+    const geo = this.state.geo;
+    if (geo) return this.viewer?.moveStreets?.(worldToScreen(geo, this.viewCenter()));
+    void loadSetting("streets-place").then((place) => {
+      if (place && this.tool === "match") this.viewer?.moveStreets?.(toMercator(place));
+    }, () => {});
+  }
+  /** Where one spot puts the map: as it lay, by its known scale and north, or
+   * failing those, as big and as turned as it shows beside the streets now. */
+  private oneSpotGeo(spot: Spot) {
+    const before = this.geoBefore, scale = this.state.metresPerPixel, view = this.state.view;
+    if (before) return pinGeo(spot, before.scale, before.rotation ?? 0);
+    if (scale) return placeGeo(spot, scale, this.state.northOffset);
+    return pinGeo(spot, (view?.scale ?? 1) / (this.viewer?.streetsScale?.() ?? 1), view?.rotation ?? 0);
+  }
+  /** Takes what's under the two crosses as a spot. The second places the map;
+   * after the first it's up to you: a second spot, or the rulers. */
+  private matchSpot() {
+    const place = this.viewer?.streetsCenter?.();
+    if (!place) return;
+    const spot = { map: { ...this.viewCenter() }, place }, [first] = this.spots;
+    this.matchMessage = first && spotsTooClose(first, spot, this.map) ? t("Pick a spot further from spot 1") : "";
+    if (this.matchMessage) return;
+    if (!first) {
+      this.spots = [spot];
+      return this.viewer?.markSpot?.(spot);
+    }
+    this.spots = [first, spot];
+    this.showCalibrated(spotsGeo(first, spot));
+  }
+  /** One spot, and the rulers set the rest. */
+  useSliders() {
+    const [spot] = this.spots;
+    if (spot) this.showCalibrated(this.oneSpotGeo(spot));
+  }
+  private showCalibrated(geo: Geo) {
+    this.pivot = this.spots[0];
+    this.state.geo = geo;
+    this.matchMessage = "";
+    this.mode("check");
+    this.changed(true);
+  }
+  /** Back from the rulers to the spots, keeping the first; ruler changes are dropped. */
+  matchSpots() {
+    this.spots = this.spots.slice(0, 1);
+    this.state.geo = this.geoBefore;
+    this.adjusted = false;
+    this.mode("match");
+    if (!this.spots.length) {
+      this.viewer?.markSpot?.();
+      this.findStreets();
+    }
+    this.changed(true);
+  }
+  /** Takes the first spot back. */
+  undoSpot() {
+    this.spots = [];
+    this.matchMessage = "";
+    this.viewer?.markSpot?.();
+  }
+  /** Moves a ruler by `steps`, about the pivot: more steps, a bigger map or more degrees. */
+  adjustGeo(ruler: "scale" | "rotation", steps: number) {
+    const geo = this.state.geo, pivot = this.pivot;
+    if (!geo || !pivot) return;
+    const rotation = geo.rotation ?? 0;
+    this.adjusted = true;
+    this.state.geo = ruler === "scale"
+      ? pinGeo(pivot, geo.scale * Math.exp(steps * SCALE_STEP), rotation)
+      : pinGeo(pivot, geo.scale, rotation - steps * TURN_STEP);
+    this.changed(true);
+  }
+  /** Back to the scale set with the Measure tool, about the pivot. */
+  resetScale() {
+    const geo = this.state.geo, pivot = this.pivot, measured = this.scaleToKeep();
+    if (!geo || !pivot || !measured) return;
+    this.adjusted = true;
+    this.state.geo = pinGeo(pivot, (geo.scale * measured) / geoMetresPerPixel(geo, this.map), geo.rotation ?? 0);
+    this.changed(true);
+  }
+  /** The measured scale, even before the first calibration has set it aside. */
+  private scaleToKeep() {
+    return this.state.measuredScale ?? (this.geoBefore ? undefined : this.state.metresPerPixel);
+  }
+  /** Done keeps the streets on, and the scale and north, unless only the position changed. */
+  private finishMatch() {
+    const geo = this.state.geo!,
+      measured = this.spots.length > 1 || this.adjusted || !this.state.metresPerPixel;
+    this.state.streets = true;
+    if (measured) {
+      // A scale from before the first calibration was measured by hand.
+      if (!this.geoBefore) this.state.measuredScale ??= this.state.metresPerPixel;
+      this.state.metresPerPixel = geoMetresPerPixel(geo, this.map);
+      this.setNorth(geoNorth(geo));
+    }
+    void saveSetting("streets-place", toLonLat(worldToScreen(geo, { x: this.map.width / 2, y: this.map.height / 2 }))).catch(() => {});
+    this.leaveMatch();
+    this.showToast(measured ? t("Lined up: scale and north now come from the streets") : t("Lined up with the streets"), "done");
+  }
+  /** × leaves the map as it was. */
+  private cancelMatch() {
+    this.state.geo = this.geoBefore;
+    this.leaveMatch();
+  }
+  private leaveMatch() {
+    this.geoBefore = this.pivot = undefined;
+    this.spots = [];
+    this.mode("browse");
+    // The map was turned to read it against the streets; a locked one goes back.
+    if (this.state.rotationMode === "locked") this.viewer?.straighten?.();
+    this.changed(true);
+  }
+  /** Moves the streets to the place searched for. */
+  async findPlace() {
+    const query = this.placeQuery.trim();
+    if (!query || this.matchMessage === t("Searching…")) return;
+    (document.activeElement as HTMLElement | null)?.blur();
+    this.matchMessage = t("Searching…");
+    try {
+      const response = await fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&accept-language=${locale}&q=${encodeURIComponent(query)}`);
+      if (!response.ok) throw new Error(String(response.status));
+      const [found] = (await response.json()) as { lat: string; lon: string }[];
+      this.matchMessage = found ? "" : t("Nothing found. Try a town nearby.");
+      if (found && this.tool === "match")
+        this.viewer?.moveStreets?.(toMercator({ lon: Number(found.lon), lat: Number(found.lat) }));
+    } catch {
+      this.matchMessage = t("Could not search. Check the connection.");
+    }
   }
   /** Saved rows open a place's or route's details; ⋯ opens its actions. */
   openRow(item: RowItem) {
@@ -1891,6 +2095,8 @@ export class ViewerControls {
   dispose() {
     // Leaving mid-route keeps a usable route rather than an orphan draft.
     if (this.tool === "route") this.finishRoute();
+    // Leaving a match unconfirmed keeps the map where it was.
+    if (this.tool === "check") this.state.geo = this.geoBefore;
     this.sheet(undefined);
     if (!document.hidden) this.endVisit();
     clearTimeout(this.searchTimer);

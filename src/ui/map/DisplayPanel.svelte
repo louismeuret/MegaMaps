@@ -13,7 +13,7 @@
     controls.tick;
     const state = controls.state;
     return { inverted: state.inverted, dimming: state.dimming, layers: { ...state.layers }, status: controls.darkStatus(),
-      counts: { routes: state.routes.length, places: state.markers.length } };
+      counts: { routes: state.routes.length, places: state.markers.length }, streets: controls.streetsView() };
   });
   const layers = {
     routes: { label: t("Routes"), icon: icons.route, neon: "[--c:var(--kind-route)]" },
@@ -62,5 +62,17 @@
         {/if}
       </label>
     {/each}
+  </div>
+  <h3 class={panelHeading}>{t("Streets")}</h3>
+  <div class={panelCard}>
+    <div class={[panelRow, "flex-wrap gap-y-8"]}>
+      <label class="contents cursor-pointer">
+        <span class={rowIcon}><Icon svg={icons.map} /></span>
+        <span class={rowText}><strong>{t("Streets on the map")}</strong><small id="streets-status" class={rowHint}>{view.streets.status}</small></span>
+        <Switch id="streets" checked={view.streets.on} disabled={!view.streets.placed} onchange={() => controls.setStreets(!view.streets.on)} />
+      </label>
+      <button type="button" id="calibrate-streets" onclick={() => controls.calibrate()}
+        class="min-h-44 basis-full cursor-pointer rounded-sm border border-c/40 text-small font-semibold text-c tint-c/12">{t("Calibrate")}</button>
+    </div>
   </div>
 </div>
